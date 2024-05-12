@@ -1,0 +1,160 @@
+<!doctype html>
+<!--
+* Tabler - Premium and Open Source dashboard template with responsive and high quality UI.
+* @version 1.0.0-beta20
+* @link https://tabler.io
+* Copyright 2018-2023 The Tabler Authors
+* Copyright 2018-2023 codecalm.net Paweł Kuna
+* Licensed under MIT (https://github.com/tabler/tabler/blob/master/LICENSE)
+-->
+{% extends "layouts/base.html" %}
+
+{% block title %}{{ config.TITLE }} - {{ self._TemplateReference__context.name }} {% endblock title %}
+<!-- Specific Page CSS goes HERE  -->
+{% block stylesheets %}
+<style>
+  @import url('https://rsms.me/inter/inter.css');
+
+  :root {
+    --tblr-font-sans-serif: 'Inter Var', -apple-system, BlinkMacSystemFont, San Francisco, Segoe UI, Roboto, Helvetica Neue, sans-serif;
+  }
+
+  body {
+    font-feature-settings: "cv03", "cv04", "cv11";
+  }
+</style>
+{% endblock stylesheets %}
+{% block page_header %}
+<!-- Page header -->
+<div class="container-xl">
+  <div class="row g-2 align-items-center">
+    <div class="col">
+      <h2 class="page-title">
+        Account Settings
+      </h2>
+    </div>
+  </div>
+</div>
+{% endblock page_header %}
+<!-- Page body -->
+{% block page_body %}
+<div class="container-xl">
+  <div class="card">
+    <div class="card-header">
+      <ul class="nav nav-tabs card-header-tabs nav-fill" data-bs-toggle="tabs">
+        <li class="nav-item">
+          <a href="#my-account" class="nav-link active"
+            data-bs-toggle="tab"><!-- Download SVG icon from http://tabler-icons.io/i/home -->
+            <svg xmlns="http://www.w3.org/2000/svg" class="icon me-2" width="24" height="24" viewBox="0 0 24 24"
+              stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+              <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+              <path d="M8 7a4 4 0 1 0 8 0a4 4 0 0 0 -8 0" />
+              <path d="M6 21v-2a4 4 0 0 1 4 -4h4a4 4 0 0 1 4 4v2" />
+            </svg>
+            My Account</a>
+        </li>
+        <li class="nav-item">
+          <a href="#tabs-activity-7" class="nav-link"
+            data-bs-toggle="tab"><!-- Download SVG icon from http://tabler-icons.io/i/activity -->
+            <svg xmlns="http://www.w3.org/2000/svg" class="icon me-2" width="24" height="24" viewBox="0 0 24 24"
+              stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+              <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+              <path d="M3 12h4l3 8l4 -16l3 8h4" />
+            </svg>
+            Activity</a>
+        </li>
+      </ul>
+    </div>
+    <div class="card-body">
+      <div class="tab-content">
+        <div class="tab-pane active show" id="my-account">
+          <h2 class="mb-4">My Account</h2>
+          <div class="row align-items-center">
+            <div class="col-auto"><span class="avatar avatar-xl"
+                style="background-image: url({{ current_user.avatar_url|default('/static/nobody.svg', true) }})"></span>
+            </div>
+            <div class="col-auto"><a href="#" class="btn">
+                Change avatar
+              </a></div>
+          </div>
+          <h3 class="card-title mt-4">User Name</h3>
+          <div>
+            <div class="row g-2">
+              <div class="col-auto">
+                <input type="text" class="form-control w-auto" value="{{current_user.username}}">
+              </div>
+
+            </div>
+          </div>
+          <h3 class="card-title mt-4">Email</h3>
+          <div>
+            <div class="row g-2">
+              <div class="col-auto">
+                {{current_user.email}}
+              </div>
+            </div>
+          </div>
+          <h3 class="card-title mt-4">Password</h3>
+          <p class="card-subtitle">You can set a permanent password if you don't want to use temporary login codes.
+          </p>
+          <div>
+            <a href="/resetpass" class="btn">
+              Set new password
+            </a>
+          </div>
+          <div class="card-footer bg-transparent mt-3">
+            <div class="btn-list justify-content-end">
+              <a href="#" class="btn">
+                Cancel
+              </a>
+              <a href="#" class="btn btn-primary">
+                Save
+              </a>
+            </div>
+          </div>
+        </div>
+        <div class="tab-pane" id="tabs-activity-7">
+          <h4>Activity tab</h4>
+          <div>Donec ac vitae diam amet vel leo egestas consequat rhoncus in luctus amet, facilisi sit mauris accumsan
+            nibh habitant senectus</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock page_body %}
+
+<!-- Specific Page JS goes HERE  -->
+
+{% block javascripts %}
+<script type="text/javascript">
+  document.addEventListener("DOMContentLoaded", function () {
+    // Show last tab
+    var lastTabElement = document.querySelector("#broker_accounts li:first-child a");
+    var lastTab = new bootstrap.Tab(lastTabElement);
+    lastTab.show();
+  });
+  $(".nav-tabs").on("click", "a", function (e) {
+    e.preventDefault();
+    if (!$(this).hasClass('new_broker')) {
+      $(this).tab('show');
+    }
+  })
+    .on("click", "span", function () {
+      var anchor = $(this).siblings('a');
+      $(anchor.attr('href')).remove();
+      $(this).parent().remove();
+      $(".nav-tabs li").children('a').first().click();
+    });
+
+  $('.add-contact').click(function (e) {
+    e.preventDefault();
+    var id = $(".nav-tabs").children().length; //think about it ;)
+    var tabId = 'contact_' + id;
+    $(this).closest('li').before('<li><a href="#contact_' + id + '">New Tab</a> <span> x </span></li>');
+    $('.tab-content').append('<div class="tab-pane" id="' + tabId + '">Contact Form: New Contact ' + id + '</div>');
+    $('.nav-tabs li:nth-child(' + id + ') a').click();
+  });
+</script>
+{% endblock javascripts %}

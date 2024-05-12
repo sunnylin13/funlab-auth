@@ -1,0 +1,96 @@
+{% extends "layouts/base-fullscreen.html" %}
+
+{% block title %} Reset Password {% endblock %}
+
+<!-- Specific Page CSS goes HERE  -->
+{% block stylesheets %}{% endblock stylesheets %}
+
+{% block page_header %}{% endblock page_header %}
+
+{% block page_body %}
+<div class="page page-center">
+    <div class="container container-tight py-4">
+        <div class="text-center mb-4">
+            <a href="." class="navbar-brand navbar-brand-autodark"><img src="{{ config.APP_LOGO }}"
+                    height="36" alt="{{ config.APP_NAME }}"></a>
+        </div>
+        <form class="card card-md" method="post" action="">
+            {{ form.hidden_tag() }}
+            <div class="card-body">
+                <h2 class="h2 text-center mb-4">Reset password</h2>
+                <p>
+                    {% if msg %}
+                    <span class="text-danger">{{ msg | safe }}</span>
+                    {% endif %}
+                </p>
+                <input id="email" name="email" type="hidden" value="{{ current_user.email }}">
+                <!-- Form -->
+                <div class="form-group mb-4">
+                    <label for="old_password">Your Old Password</label>
+                    <div class="input-group">
+                        <span class="input-group-text" id="basic-addon2">
+                            <svg class="icon icon-xs text-gray-600" fill="currentColor" viewBox="0 0 20 20"
+                                xmlns="http://www.w3.org/2000/svg">
+                                <path fill-rule="evenodd"
+                                    d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z"
+                                    clip-rule="evenodd"></path>
+                            </svg>
+                        </span>
+                        {{ form.old_password(class="form-control") }}
+                    </div>
+                </div>
+                <div class="form-group mb-4">
+                    <label for="new_password">New Password</label>
+                    <div class="input-group">
+                        <span class="input-group-text" id="basic-addon2">
+                            <svg class="icon icon-xs text-gray-600" fill="currentColor" viewBox="0 0 20 20"
+                                xmlns="http://www.w3.org/2000/svg">
+                                <path fill-rule="evenodd"
+                                    d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z"
+                                    clip-rule="evenodd"></path>
+                            </svg>
+                        </span>
+                        {{ form.new_password(class="form-control") }}
+                    </div>
+                </div>
+                <div class="form-group mb-4">
+                    <label for="confirm_password">Confirm Password</label>
+                    <div class="input-group">
+                        <span class="input-group-text" id="basic-addon2">
+                            <svg class="icon icon-xs text-gray-600" fill="currentColor" viewBox="0 0 20 20"
+                                xmlns="http://www.w3.org/2000/svg">
+                                <path fill-rule="evenodd"
+                                    d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z"
+                                    clip-rule="evenodd"></path>
+                            </svg>
+                        </span>
+                        {{ form.confirm_password(class="form-control") }}
+                    </div>
+                </div>
+                <!-- End of Form -->
+                <div class="d-grid">
+                    {{form.resetpass(class="btn btn-secondary")}}
+                </div>
+                <div class="form-footer">
+                    <a href="#" class="btn btn-primary w-100">
+                        <!-- Download SVG icon from http://tabler-icons.io/i/mail -->
+                        <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24"
+                            stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round"
+                            stroke-linejoin="round">
+                            <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+                            <path d="M3 7a2 2 0 0 1 2 -2h14a2 2 0 0 1 2 2v10a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-10z" />
+                            <path d="M3 7l9 6l9 -6" />
+                        </svg>
+                        Send me new password
+                    </a>
+                </div>
+            </div>
+        </form>
+        <div class="text-center text-muted mt-3">
+            Forget it, <a href="{{ url_for('auth_bp.login') }}">send me back</a> to the sign in screen.
+        </div>
+    </div>
+</div>
+    {% endblock page_body %}
+<!-- Specific Page JS goes HERE  -->
+{% block javascripts %}{% endblock javascripts %}

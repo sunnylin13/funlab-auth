@@ -1,0 +1,11 @@
+# [AuthView.google_example]
+# provider = 'google'
+# userinfo_key_mapping = { username = 'name', avatar_url = 'picture' } # use to replace the key to get userinfo data
+# # below is the what oauth need
+# client_id = "{{ENV_VAR:GOOGLE_CLIENT_ID}}"
+# client_secret = "{{ENV_VAR:GOOGLE_CLIENT_SECRET}}"
+# authorize_url = "https://accounts.google.com/o/oauth2/auth"
+# access_token_url = "https://oauth2.googleapis.com/token"
+# jwks_uri = 'https://www.googleapis.com/oauth2/v3/certs'
+# userinfo_endpoint = 'https://www.googleapis.com/oauth2/v3/userinfo'
+# client_kwargs = { scope = 'openid email profile' }
