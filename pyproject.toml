@@ -1,14 +1,13 @@
 [tool.poetry]
 name = "funlab-auth"
-version = "0.2.5"
+version = "0.2.6"
 license = "MIT"
 description = "A funlab-flaskr plugin provide authentication mechenism."
 authors = ["SunnyLin <013.lin@gmail.com>"]
 readme = "README.md"
-repository = "https://github.com/python-poetry/poetry"
+repository = "https://github.com/sunnylin13/funlab-auth"
 # documentation = "https://python-poetry.org/docs/"
 packages = [{include = "funlab"}]
-
 
 [tool.poetry.dependencies]
 python = "^3.11"
@@ -17,7 +16,6 @@ requests = "^2.31.0"
 bcrypt = "^4.1.2"
 flask-wtf = "^1.2.1"
 funlab-flaskr = "^0.3.7" # {path = "../funlab-flaskr", develop = true}  #
-
 
 [build-system]
 requires = ["poetry-core"]
