@@ -6,19 +6,11 @@ from dataclasses import dataclass, field
 import bcrypt
 import enum
 from sqlalchemy import Boolean, Column, Integer, String, UniqueConstraint
-from sqlalchemy import or_, select
-from sqlalchemy import Enum as SQLEnum
+# from sqlalchemy import Enum as SQLEnum
 from sqlalchemy.orm import Session
 from sqlalchemy.ext.hybrid import hybrid_property
-
 # all of application's entity, use same registry to declarate
-# from funlab.flaskr.app import APP_ENTITIES_REGISTRY as entities_registry
 from funlab.core.appbase import APP_ENTITIES_REGISTRY as entities_registry
-
-def load_user(id_email, sa_session:Session)->UserEntity:
-    stmt = select(UserEntity).where(or_(UserEntity.id == id_email
-                                        , UserEntity.email == id_email, ))
-    return sa_session.execute(stmt).scalar()
 
 def save_user(user:UserEntity, sa_session:Session):
     sa_session.merge(user)
