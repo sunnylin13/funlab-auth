@@ -6,11 +6,9 @@ from dataclasses import dataclass, field
 import bcrypt
 import enum
 from sqlalchemy import Boolean, Column, Integer, String, UniqueConstraint
-from sqlalchemy import or_, select
-from sqlalchemy import Enum as SQLEnum
+# from sqlalchemy import Enum as SQLEnum
 from sqlalchemy.orm import Session
 from sqlalchemy.ext.hybrid import hybrid_property
-
 # all of application's entity, use same registry to declarate
 from funlab.core.appbase import APP_ENTITIES_REGISTRY as entities_registry
 

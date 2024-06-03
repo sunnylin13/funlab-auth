@@ -17,7 +17,6 @@ from funlab.core.appbase import _FlaskBase
 from sqlalchemy.orm import Session, with_polymorphic
 from sqlalchemy import select, or_
 
-
 class AuthView(SecurityPlugin):
     @staticmethod
     def load_users(id_email, sa_session:Session)->Type[UserEntity]:
