@@ -20,7 +20,7 @@ from sqlalchemy import select, or_
 
 class AuthView(SecurityPlugin):
     @staticmethod
-    def load_user(id_email, sa_session:Session)->Type[UserEntity]:
+    def load_users(id_email, sa_session:Session)->Type[UserEntity]:
         """load任何使用sqlalchemy "Mapping Class Inheritance Hierarchies"採用single table inheritance定義UserEntity的subclass,
         用id或email查詢在不同role資料下得到對應正確的UserEntity或其subclass instance
             例如以下定義GuestEntity, 它的role 欄位資料即是'guest', 返回的就是GuestEntity instance
@@ -47,7 +47,7 @@ class AuthView(SecurityPlugin):
     def __init__(self, app:_FlaskBase):
         super().__init__(app, url_prefix="")
         # Apply flask-caching memoize decorator to load_user
-        AuthView.load_user = self.app.cache.memoize()(AuthView.load_user)
+        # AuthView.load_user = self.app.cache.memoize()(AuthView.load_user)
         oauth = OAuth(app)
         oauth_configs:Config = self.plugin_config
         self.oauths:dict[str:dict] = {}
@@ -114,7 +114,7 @@ class AuthView(SecurityPlugin):
                 rememberme = request.form['rememberme']
                 # Locate user
                 sa_session = self.app.dbmgr.get_db_session()
-                user = AuthView.load_user(email, sa_session)
+                user = AuthView.load_users(email, sa_session)
                 if user: # and user.verify_pass(password):
                     login_user(user, remember=(rememberme=='y'))
                     return redirect(url_for('root_bp.home'))
@@ -158,12 +158,12 @@ class AuthView(SecurityPlugin):
                                        avatar_url=self.get_userinfo_field_value(userinfo, 'avatar_url'),
                                        password=None,  state='active')
                 sa_session = self.app.dbmgr.get_db_session()
-                if (user:=AuthView.load_user(oauth_user.email, sa_session)):
+                if (user:=AuthView.load_users(oauth_user.email, sa_session)):
                     if user.merge_userdata(oauth_user):
                         AuthView.save_user(user, sa_session)
                 else:
                     AuthView.save_user(oauth_user.to_userentity(), sa_session)
-                    user=AuthView.load_user(oauth_user.email, sa_session)
+                    user=AuthView.load_users(oauth_user.email, sa_session)
                 session['oauth_token'] = token
                 login_user(user)
                 return redirect(url_for('root_bp.home'))
@@ -188,7 +188,7 @@ class AuthView(SecurityPlugin):
                 email = request.form['email']
                 password = request.form['password']
                 sa_session = self.app.dbmgr.get_db_session()
-                user = AuthView.load_user(email, sa_session)
+                user = AuthView.load_users(email, sa_session)
                 if user:
                     flash('Email already registered. Check it and register again.', category='warning')
                     return render_template('/register.html', form=create_account_form)
@@ -215,7 +215,7 @@ class AuthView(SecurityPlugin):
                     flash('New password not consistancy. Please re-enter.', category='warning')
                     return render_template('/resetpass.html', form=resetpass_form)
                 sa_session = self.app.dbmgr.get_db_session()
-                user = AuthView.load_user(email, sa_session)
+                user = AuthView.load_users(email, sa_session)
                 if user and (user.verify_pass(old_password) or user.verify_pass('account+is+from+external+authentication+provider!!!')):
                     # sa_session = current_app.dbmgr.get_db_session()
                     user.password = new_password
@@ -246,13 +246,13 @@ class AuthView(SecurityPlugin):
 
         @self.login_manager.user_loader
         def user_loader(id):
-            return AuthView.load_user(id, self.app.dbmgr.get_db_session())
+            return AuthView.load_users(id, self.app.dbmgr.get_db_session())
 
         @self.login_manager.request_loader
         def request_loader(request):
             sa_session = self.app.dbmgr.get_db_session()
             if 'user_id' in session:
-                return AuthView.load_user(session['user_id'], sa_session)
+                return AuthView.load_users(session['user_id'], sa_session)
             elif self.oauth_name_inuse and (oauth_register:=self.get_oauth_register()):
                 if (token:=request.headers.get('Authorization')):
                     oauth_register.token = token
@@ -262,7 +262,7 @@ class AuthView(SecurityPlugin):
                 if oauth_register.token:
                     try:
                         userinfo = oauth_register.userinfo()
-                        user = AuthView.load_user(self.get_userinfo_field_value(userinfo, 'email'), sa_session)
+                        user = AuthView.load_users(self.get_userinfo_field_value(userinfo, 'email'), sa_session)
                         return user
                     except Exception as e:
                         raise Exception("Oauth request_loader for oauth_register.userinfo() failed! Check") from e
