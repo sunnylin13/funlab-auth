@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "funlab-auth"
-version = "0.2.6"
+version = "0.2.7"
 license = "MIT"
 description = "A funlab-flaskr plugin provide authentication mechenism."
 authors = ["SunnyLin <013.lin@gmail.com>"]

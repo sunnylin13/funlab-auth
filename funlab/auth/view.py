@@ -1,12 +1,13 @@
 
 import copy
-from typing import Type
+
 from authlib.integrations.flask_client import OAuth
 from flask import (flash, redirect, render_template, request,
                     session, url_for)
 from flask_login import current_user, login_required, login_user, logout_user
 
 
+from funlab.auth.utils import load_user
 from funlab.core.menu import MenuDivider, MenuItem
 from funlab.core.plugin import SecurityPlugin
 from funlab.core.config import Config
@@ -14,39 +15,12 @@ from funlab.core.config import Config
 from .forms import AddUserForm, LoginForm, ResetPassForm
 from .user import OAuthUser, UserEntity, entities_registry
 from funlab.core.appbase import _FlaskBase
-from sqlalchemy.orm import Session, with_polymorphic
-from sqlalchemy import select, or_
 
 class AuthView(SecurityPlugin):
-    @staticmethod
-    def load_user(id_email, sa_session:Session, classes='*')->Type[UserEntity]:
-        """load任何使用sqlalchemy "Mapping Class Inheritance Hierarchies"採用single table inheritance定義UserEntity的subclass,
-        用id或email查詢在不同role資料下得到對應正確的UserEntity或其subclass instance
-            例如以下定義GuestEntity, 它的role 欄位資料即是'guest', 返回的就是GuestEntity instance
-            @entities_registry.mapped
-            @dataclass
-            class GuestEntity(UserEntity):
-                __mapper_args__ = {
-                    "polymorphic_identity": "guest",
-                }
-        Args:
-            id_email ([type]): [description]
-            sa_session ([type]): [description]
-        """
-        User = with_polymorphic(UserEntity, classes=classes)
-        stmt = select(User).where(or_(User.id == id_email, User.email == id_email, ))
-        user = sa_session.execute(stmt).scalar()
-        return user
-
-    @staticmethod
-    def save_user(user:Type[UserEntity], sa_session:Session):  # Type[UserEntity] means user should be an instance of UserEntity or any of its subclasses
-        sa_session.merge(user)
-        sa_session.commit()
-
     def __init__(self, app:_FlaskBase):
         super().__init__(app, url_prefix="")
         # Apply flask-caching memoize decorator to load_user
-        # AuthView.load_user = self.app.cache.memoize()(AuthView.load_user)
+        AuthView.load_user = load_user # self.app.cache.memoize()(load_user)
         oauth = OAuth(app)
         oauth_configs:Config = self.plugin_config
         self.oauths:dict[str:dict] = {}
