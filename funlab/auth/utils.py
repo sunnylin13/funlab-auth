@@ -4,7 +4,7 @@ from sqlalchemy import select, or_
 from funlab.core.appbase import app_cache
 from .user import UserEntity
 
-@app_cache.memoize()
+# @app_cache.memoize()
 def load_user(id_email, sa_session:Session, classes='*')->Type[UserEntity]:
     """load任何使用sqlalchemy "Mapping Class Inheritance Hierarchies"採用single table inheritance定義UserEntity的subclass,
     用id或email查詢在不同role資料下得到對應正確的UserEntity或其subclass instance
