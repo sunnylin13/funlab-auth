@@ -9,3 +9,15 @@
 # jwks_uri = 'https://www.googleapis.com/oauth2/v3/certs'
 # userinfo_endpoint = 'https://www.googleapis.com/oauth2/v3/userinfo'
 # client_kwargs = { scope = 'openid email profile' }
+
+# [AuthView.gitlab_example]
+# provider = 'gitlab'
+# userinfo_key_mapping = { username = 'name' }
+# # below is the what oauth need
+# client_id = "{{ENV_VAR:GITLAB_CLIENT_ID}}"
+# client_secret = "{{ENV_VAR:GITLAB_SECRET}}"
+# access_token_url = 'http://gitlab.com.tw/oauth/token'
+# authorize_url = 'http://gitlab.com.tw/oauth/authorize'
+# api_base_url = 'http://gitlab.com.tw/api/v4/'
+# userinfo_endpoint = 'http://gitlab.com.tw/api/v4/user'
+# client_kwargs = { 'scope' = 'read_user' }
