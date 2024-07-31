@@ -19,8 +19,12 @@ def load_user(id_email, sa_session:Session, classes='*')->Type[UserEntity]:
         id_email ([type]): [description]
         sa_session ([type]): [description]
     """
-    User = with_polymorphic(UserEntity, classes=classes)
-    stmt = select(User).where(or_(User.id == id_email, User.email == id_email, ))
+    User: UserEntity = with_polymorphic(UserEntity, classes=classes)
+    try:
+        id = int(id_email)
+        stmt = select(User).where(User.id == id)
+    except:
+        stmt = select(User).where(User.email == id_email)
     user = sa_session.execute(stmt).scalar()
     return user
 
