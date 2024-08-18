@@ -1,5 +1,7 @@
 
 import copy
+import inspect
+from pathlib import Path
 
 from authlib.integrations.flask_client import OAuth
 from flask import (flash, redirect, render_template, request,
@@ -90,6 +92,7 @@ class AuthView(SecurityPlugin):
                 user = AuthView.load_user(email, sa_session)
                 if user: # and user.verify_pass(password):
                     login_user(user, remember=(rememberme=='y'))
+                    user.user_folder = self.app.get_user_data_storage_path(user.username)
                     return redirect(url_for('root_bp.home'))
                 elif not user:
                     flash('User email not exist. Please check.', "warning")
