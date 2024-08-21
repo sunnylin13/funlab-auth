@@ -106,7 +106,6 @@ class UserEntity(User):
     is_admin:bool = field(init=False, metadata={'sa': Column(Boolean)})
     role: str = field(init=False, metadata={'sa': Column(String)})
     # role: RoleEnum = field(init=False, metadata={'sa': Column(SQLEnum(RoleEnum))})  # Use the Enum for the role column
-    _user_folder:Path = field(init=False, repr=False, compare=False, default=None)
 
     __mapper_args__ = {
         "polymorphic_identity": "user",
@@ -118,14 +117,6 @@ class UserEntity(User):
     @hybrid_property
     def is_active(self):
         return self.state=='active'
-
-    @property
-    def user_folder(self) -> Path:
-        return self._user_folder
-
-    @user_folder.setter
-    def user_folder(self, value: Path):
-        self._user_folder = value
 
     def merge_userdata(self, oauth_user:OAuthUser):
         updated=False
