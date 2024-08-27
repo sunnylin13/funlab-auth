@@ -5,7 +5,7 @@ from funlab.core.appbase import app_cache
 from .user import UserEntity
 
 # @app_cache.memoize() # 有AttributeError: Can't pickle local object 'SolClient.__init__.<locals>.<lambda>', 所以不能cache
-def load_user(id_email, sa_session:Session, classes='*')->Type[UserEntity]:
+def load_user(id_email, sa_session:Session, classes='*')->Type[UserEntity]|None:
     """load任何使用sqlalchemy "Mapping Class Inheritance Hierarchies"採用single table inheritance定義UserEntity的subclass,
     用id或email查詢在不同role資料下得到對應正確的UserEntity或其subclass instance
         例如以下定義GuestEntity, 它的role 欄位資料即是'guest', 返回的就是GuestEntity instance
