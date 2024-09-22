@@ -90,9 +90,9 @@ class AuthView(SecurityPlugin):
                 # Locate user
                 sa_session = self.app.dbmgr.get_db_session()
                 user = AuthView.load_user(email, sa_session)
-                if user: # and user.verify_pass(password):
-                    login_user(user, remember=(rememberme=='y'))
+                if user:
                     user.user_folder = self.app.get_user_data_storage_path(user.username)
+                    login_user(user, remember=(rememberme=='y'))
                     return redirect(url_for('root_bp.home'))
                 elif not user:
                     flash('User email not exist. Please check.', "warning")
@@ -135,11 +135,13 @@ class AuthView(SecurityPlugin):
                                        password=None,  state='active')
                 sa_session = self.app.dbmgr.get_db_session()
                 if (user:=AuthView.load_user(oauth_user.email, sa_session)):
+                    user.user_folder = self.app.get_user_data_storage_path(user.username)
                     if user.merge_userdata(oauth_user):
                         AuthView.save_user(user, sa_session)
                 else:
                     AuthView.save_user(oauth_user.to_userentity(), sa_session)
                     user=AuthView.load_user(oauth_user.email, sa_session)
+                    user.user_folder = self.app.get_user_data_storage_path(user.username)
                 session['oauth_token'] = token
                 login_user(user)
                 return redirect(url_for('root_bp.home'))
@@ -166,10 +168,12 @@ class AuthView(SecurityPlugin):
                 sa_session = self.app.dbmgr.get_db_session()
                 user = AuthView.load_user(email, sa_session)
                 if user:
+                    user.user_folder = self.app.get_user_data_storage_path(user.username)
                     flash('Email already registered. Check it and register again.', category='warning')
                     return render_template('/register.html', form=create_account_form)
                 else:
                     user = UserEntity(username=username, email=email, password=password, avatar_url='', state='active')
+                    user.user_folder = self.app.get_user_data_storage_path(user.username)
                     sa_session = self.app.dbmgr.get_db_session()
                     sa_session.add(user)
                     sa_session.commit()
@@ -193,7 +197,7 @@ class AuthView(SecurityPlugin):
                 sa_session = self.app.dbmgr.get_db_session()
                 user = AuthView.load_user(email, sa_session)
                 if user and (user.verify_pass(old_password) or user.verify_pass('account+is+from+external+authentication+provider!!!')):
-                    # sa_session = current_app.dbmgr.get_db_session()
+                    user.user_folder = self.app.get_user_data_storage_path(user.username)
                     user.password = new_password
                     user.hash_pass()
                     AuthView.save_user(user, sa_session)
@@ -222,13 +226,17 @@ class AuthView(SecurityPlugin):
 
         @self.login_manager.user_loader
         def user_loader(id):
-            return AuthView.load_user(id, self.app.dbmgr.get_db_session())
+            user = AuthView.load_user(id, self.app.dbmgr.get_db_session())
+            user.user_folder = self.app.get_user_data_storage_path(user.username)
+            return user
 
         @self.login_manager.request_loader
         def request_loader(request):
             sa_session = self.app.dbmgr.get_db_session()
             if 'user_id' in session:
-                return AuthView.load_user(session['user_id'], sa_session)
+                user = AuthView.load_user(session['user_id'], sa_session)
+                user.user_folder = self.app.get_user_data_storage_path(user.username)
+                return user
             elif self.oauth_name_inuse and (oauth_register:=self.get_oauth_register()):
                 if (token:=request.headers.get('Authorization')):
                     oauth_register.token = token
@@ -239,6 +247,7 @@ class AuthView(SecurityPlugin):
                     try:
                         userinfo = oauth_register.userinfo()
                         user = AuthView.load_user(self.get_userinfo_field_value(userinfo, 'email'), sa_session)
+                        user.user_folder = self.app.get_user_data_storage_path(user.username)
                         return user
                     except Exception as e:
                         raise Exception("Oauth request_loader for oauth_register.userinfo() failed! Check") from e

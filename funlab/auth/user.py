@@ -29,6 +29,7 @@ class User:
     is_admin:bool =  field(init=False)
     # role: RoleEnum = field(init=False)
     role: str = field(init=False)
+    user_folder: str = field(init=False, default=None) # user folder in the web file system
 
     def __post_init__(self):
         self.is_admin = False
