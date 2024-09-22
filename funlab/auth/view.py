@@ -1,7 +1,5 @@
 
 import copy
-import inspect
-from pathlib import Path
 
 from authlib.integrations.flask_client import OAuth
 from flask import (flash, redirect, render_template, request,
@@ -9,7 +7,7 @@ from flask import (flash, redirect, render_template, request,
 from flask_login import current_user, login_required, login_user, logout_user
 
 
-from funlab.auth.utils import load_user
+from funlab.auth.utils import load_user, save_user
 from funlab.core.menu import MenuDivider, MenuItem
 from funlab.core.plugin import SecurityPlugin
 from funlab.core.config import Config
@@ -22,7 +20,7 @@ class AuthView(SecurityPlugin):
     def __init__(self, app:_FlaskBase):
         super().__init__(app, url_prefix="")
         # Apply flask-caching memoize decorator to load_user
-        AuthView.load_user = load_user # self.app.cache.memoize()(load_user)
+        # AuthView.load_user = load_user # self.app.cache.memoize()(load_user)
         oauth = OAuth(app)
         oauth_configs:Config = self.plugin_config
         self.oauths:dict[str:dict] = {}
@@ -89,7 +87,7 @@ class AuthView(SecurityPlugin):
                 rememberme = request.form['rememberme']
                 # Locate user
                 sa_session = self.app.dbmgr.get_db_session()
-                user = AuthView.load_user(email, sa_session)
+                user = load_user(email, sa_session)
                 if user:
                     user.user_folder = self.app.get_user_data_storage_path(user.username)
                     login_user(user, remember=(rememberme=='y'))
@@ -134,13 +132,13 @@ class AuthView(SecurityPlugin):
                                        avatar_url=self.get_userinfo_field_value(userinfo, 'avatar_url'),
                                        password=None,  state='active')
                 sa_session = self.app.dbmgr.get_db_session()
-                if (user:=AuthView.load_user(oauth_user.email, sa_session)):
+                if (user:=load_user(oauth_user.email, sa_session)):
                     user.user_folder = self.app.get_user_data_storage_path(user.username)
                     if user.merge_userdata(oauth_user):
-                        AuthView.save_user(user, sa_session)
+                        save_user(user, sa_session)
                 else:
-                    AuthView.save_user(oauth_user.to_userentity(), sa_session)
-                    user=AuthView.load_user(oauth_user.email, sa_session)
+                    save_user(oauth_user.to_userentity(), sa_session)
+                    user=load_user(oauth_user.email, sa_session)
                     user.user_folder = self.app.get_user_data_storage_path(user.username)
                 session['oauth_token'] = token
                 login_user(user)
@@ -166,7 +164,7 @@ class AuthView(SecurityPlugin):
                 email = request.form['email']
                 password = request.form['password']
                 sa_session = self.app.dbmgr.get_db_session()
-                user = AuthView.load_user(email, sa_session)
+                user = load_user(email, sa_session)
                 if user:
                     user.user_folder = self.app.get_user_data_storage_path(user.username)
                     flash('Email already registered. Check it and register again.', category='warning')
@@ -195,12 +193,12 @@ class AuthView(SecurityPlugin):
                     flash('New password not consistancy. Please re-enter.', category='warning')
                     return render_template('/resetpass.html', form=resetpass_form)
                 sa_session = self.app.dbmgr.get_db_session()
-                user = AuthView.load_user(email, sa_session)
+                user = load_user(email, sa_session)
                 if user and (user.verify_pass(old_password) or user.verify_pass('account+is+from+external+authentication+provider!!!')):
                     user.user_folder = self.app.get_user_data_storage_path(user.username)
                     user.password = new_password
                     user.hash_pass()
-                    AuthView.save_user(user, sa_session)
+                    save_user(user, sa_session)
                     # sa_session.merge(user)
                     # sa_session.commit()
                     flash('Password reset successfully. Please login again.', category='success')
@@ -226,7 +224,7 @@ class AuthView(SecurityPlugin):
 
         @self.login_manager.user_loader
         def user_loader(id):
-            user = AuthView.load_user(id, self.app.dbmgr.get_db_session())
+            user = load_user(id, self.app.dbmgr.get_db_session())
             user.user_folder = self.app.get_user_data_storage_path(user.username)
             return user
 
@@ -234,7 +232,7 @@ class AuthView(SecurityPlugin):
         def request_loader(request):
             sa_session = self.app.dbmgr.get_db_session()
             if 'user_id' in session:
-                user = AuthView.load_user(session['user_id'], sa_session)
+                user = load_user(session['user_id'], sa_session)
                 user.user_folder = self.app.get_user_data_storage_path(user.username)
                 return user
             elif self.oauth_name_inuse and (oauth_register:=self.get_oauth_register()):
@@ -246,7 +244,7 @@ class AuthView(SecurityPlugin):
                 if oauth_register.token:
                     try:
                         userinfo = oauth_register.userinfo()
-                        user = AuthView.load_user(self.get_userinfo_field_value(userinfo, 'email'), sa_session)
+                        user = load_user(self.get_userinfo_field_value(userinfo, 'email'), sa_session)
                         user.user_folder = self.app.get_user_data_storage_path(user.username)
                         return user
                     except Exception as e:
