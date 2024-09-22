@@ -19,8 +19,6 @@ from funlab.core.appbase import _FlaskBase
 class AuthView(SecurityPlugin):
     def __init__(self, app:_FlaskBase):
         super().__init__(app, url_prefix="")
-        # Apply flask-caching memoize decorator to load_user
-        # AuthView.load_user = load_user # self.app.cache.memoize()(load_user)
         oauth = OAuth(app)
         oauth_configs:Config = self.plugin_config
         self.oauths:dict[str:dict] = {}
