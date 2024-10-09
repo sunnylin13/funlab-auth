@@ -115,6 +115,10 @@ class UserEntity(User):
 
     __table_args__ = (UniqueConstraint('email', name='_user_email_uc'),)
 
+    @property
+    def email_name(self):
+        return self.email.split('@')[0]
+
     @hybrid_property
     def is_active(self):
         return self.state=='active'
