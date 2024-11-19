@@ -11,13 +11,13 @@ from funlab.auth.utils import load_user, save_user
 from funlab.core.menu import MenuDivider, MenuItem
 from funlab.core.plugin import SecurityPlugin
 from funlab.core.config import Config
+from funlab.flaskr.app import FunlabFlask
 
 from .forms import AddUserForm, LoginForm, ResetPassForm
 from .user import OAuthUser, UserEntity, entities_registry
-from funlab.core.appbase import _FlaskBase
 
 class AuthView(SecurityPlugin):
-    def __init__(self, app:_FlaskBase):
+    def __init__(self, app:FunlabFlask):
         super().__init__(app, url_prefix="")
         oauth = OAuth(app)
         oauth_configs:Config = self.plugin_config
