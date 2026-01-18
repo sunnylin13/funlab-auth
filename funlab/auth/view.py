@@ -90,18 +90,18 @@ class AuthView(SecurityPlugin):
                 password = request.form['password']
                 rememberme = request.form['rememberme']
                 # Locate user
-                sa_session = self.app.dbmgr.get_db_session()
-                user = load_user(email, sa_session)
-                if user:
-                    user.user_folder = self.app.get_user_data_storage_path(user.username)
-                    login_user(user, remember=(rememberme=='y'))
-                    return redirect(url_for('root_bp.home'))
-                elif not user:
-                    flash('User email not exist. Please check.', "warning")
-                elif user.verify_pass('account+is+from+external+authentication+provider!!!'):
-                    flash('Your account is from external authentication provider, please login with proper provider below.', "info")
-                else:
-                    flash("Incorrect password. Please try again.", "warning")
+                with self.app.dbmgr.session_context() as session:
+                    user = load_user(email, session)
+                    if user:
+                        user.user_folder = self.app.get_user_data_storage_path(user.username)
+                        login_user(user, remember=(rememberme=='y'))
+                        return redirect(url_for('root_bp.home'))
+                    elif not user:
+                        flash('User email not exist. Please check.', "warning")
+                    elif user.verify_pass('account+is+from+external+authentication+provider!!!'):
+                        flash('Your account is from external authentication provider, please login with proper provider below.', "info")
+                    else:
+                        flash("Incorrect password. Please try again.", "warning")
                 return render_template('/sign-in.html', form=login_form, oauths_info=self.oauths_info)
             elif current_user and current_user.is_authenticated:
                 return redirect(url_for('root_bp.home'))
@@ -135,15 +135,15 @@ class AuthView(SecurityPlugin):
                                        username=self.get_userinfo_field_value(userinfo, 'username'),
                                        avatar_url=self.get_userinfo_field_value(userinfo, 'avatar_url'),
                                        password=None,  state='active')
-                sa_session = self.app.dbmgr.get_db_session()
-                if (user:=load_user(oauth_user.email, sa_session)):
-                    user.user_folder = self.app.get_user_data_storage_path(user.username)
-                    if user.merge_userdata(oauth_user):
-                        save_user(user, sa_session)
-                else:
-                    save_user(oauth_user.to_userentity(), sa_session)
-                    user=load_user(oauth_user.email, sa_session)
-                    user.user_folder = self.app.get_user_data_storage_path(user.username)
+                with self.app.dbmgr.session_context() as sa_session:
+                    if (user:=load_user(oauth_user.email, sa_session)):
+                        user.user_folder = self.app.get_user_data_storage_path(user.username)
+                        if user.merge_userdata(oauth_user):
+                            save_user(user, sa_session)
+                    else:
+                        save_user(oauth_user.to_userentity(), sa_session)
+                        user=load_user(oauth_user.email, sa_session)
+                        user.user_folder = self.app.get_user_data_storage_path(user.username)
                 session['oauth_token'] = token
                 login_user(user)
                 return redirect(url_for('root_bp.home'))
@@ -167,18 +167,17 @@ class AuthView(SecurityPlugin):
                 username = request.form['username']
                 email = request.form['email']
                 password = request.form['password']
-                sa_session = self.app.dbmgr.get_db_session()
-                user = load_user(email, sa_session)
-                if user:
-                    user.user_folder = self.app.get_user_data_storage_path(user.username)
-                    flash('Email already registered. Check it and register again.', category='warning')
-                    return render_template('/register.html', form=create_account_form)
-                else:
-                    user = UserEntity(username=username, email=email, password=password, avatar_url='', state='active')
-                    user.user_folder = self.app.get_user_data_storage_path(user.username)
-                    sa_session = self.app.dbmgr.get_db_session()
-                    sa_session.add(user)
-                    sa_session.commit()
+                with self.app.dbmgr.session_context() as sa_session:
+                    user = load_user(email, sa_session)
+                    if user:
+                        user.user_folder = self.app.get_user_data_storage_path(user.username)
+                        flash('Email already registered. Check it and register again.', category='warning')
+                        return render_template('/register.html', form=create_account_form)
+                    else:
+                        user = UserEntity(username=username, email=email, password=password, avatar_url='', state='active')
+                        user.user_folder = self.app.get_user_data_storage_path(user.username)
+                        sa_session.add(user)
+
                     logout_user()
                     flash("Account is created successfully. Please login.", category='success')
                     return render_template('sign-in.html', form=LoginForm(), oauths_info=self.oauths_info)
@@ -196,25 +195,23 @@ class AuthView(SecurityPlugin):
                 if new_password != confirm_password:
                     flash('New password not consistancy. Please re-enter.', category='warning')
                     return render_template('/resetpass.html', form=resetpass_form)
-                sa_session = self.app.dbmgr.get_db_session()
-                user = load_user(email, sa_session)
-                if user and (user.verify_pass(old_password) or user.verify_pass('account+is+from+external+authentication+provider!!!')):
-                    user.user_folder = self.app.get_user_data_storage_path(user.username)
-                    user.password = new_password
-                    user.hash_pass()
-                    save_user(user, sa_session)
-                    # sa_session.merge(user)
-                    # sa_session.commit()
-                    flash('Password reset successfully. Please login again.', category='success')
-                    return render_template('/sign-in.html', form=LoginForm(), oauths_info=self.oauths_info)
-                elif user is not None:
-                    flash('Wrong password! Please check.', category='danger')
-                    return render_template('/resetpass.html', form=resetpass_form)
-                elif user is None:
-                    flash('User email not exist. Please check.', "warning")
-                    return render_template('/resetpass.html', form=resetpass_form)
-            else:
-                return render_template('/resetpass.html', form=resetpass_form)
+                with self.app.dbmgr.session_context() as sa_session:
+                    user = load_user(email, sa_session)
+                    if user and (user.verify_pass(old_password) or user.verify_pass('account+is+from+external+authentication+provider!!!')):
+                        user.user_folder = self.app.get_user_data_storage_path(user.username)
+                        user.password = new_password
+                        user.hash_pass()
+                        save_user(user, sa_session)
+                        flash('Password reset successfully. Please login again.', category='success')
+                        return render_template('/sign-in.html', form=LoginForm(), oauths_info=self.oauths_info)
+                    elif user is not None:
+                        flash('Wrong password! Please check.', category='danger')
+                        return render_template('/resetpass.html', form=resetpass_form)
+                    elif user is None:
+                        flash('User email not exist. Please check.', "warning")
+                        return render_template('/resetpass.html', form=resetpass_form)
+                    else:
+                        return render_template('/resetpass.html', form=resetpass_form)
 
         @self.blueprint.route('/settings')
         @login_required
@@ -228,30 +225,31 @@ class AuthView(SecurityPlugin):
 
         @self.login_manager.user_loader
         def user_loader(id):
-            user = load_user(id, self.app.dbmgr.get_db_session())
-            user.user_folder = self.app.get_user_data_storage_path(user.username)
-            return user
+            with self.app.dbmgr.session_context() as session:
+                user = load_user(id, session)
+                user.user_folder = self.app.get_user_data_storage_path(user.username)
+                return user
 
         @self.login_manager.request_loader
         def request_loader(request):
-            sa_session = self.app.dbmgr.get_db_session()
-            if 'user_id' in session:
-                user = load_user(session['user_id'], sa_session)
-                user.user_folder = self.app.get_user_data_storage_path(user.username)
-                return user
-            elif self.oauth_name_inuse and (oauth_register:=self.get_oauth_register()):
-                if (token:=request.headers.get('Authorization')):
-                    oauth_register.token = token
-                elif (token:=request.args.get('google_token')):
-                    oauth_register.token = token
+            with self.app.dbmgr.session_context() as sa_session:
+                if 'user_id' in session:
+                    user = load_user(session['user_id'], sa_session)
+                    user.user_folder = self.app.get_user_data_storage_path(user.username)
+                    return user
+                elif self.oauth_name_inuse and (oauth_register:=self.get_oauth_register()):
+                    if (token:=request.headers.get('Authorization')):
+                        oauth_register.token = token
+                    elif (token:=request.args.get('google_token')):
+                        oauth_register.token = token
 
-                if oauth_register.token:
-                    try:
-                        userinfo = oauth_register.userinfo()
-                        user = load_user(self.get_userinfo_field_value(userinfo, 'email'), sa_session)
-                        user.user_folder = self.app.get_user_data_storage_path(user.username)
-                        return user
-                    except Exception as e:
-                        raise Exception("Oauth request_loader for oauth_register.userinfo() failed! Check") from e
+                    if oauth_register.token:
+                        try:
+                            userinfo = oauth_register.userinfo()
+                            user = load_user(self.get_userinfo_field_value(userinfo, 'email'), sa_session)
+                            user.user_folder = self.app.get_user_data_storage_path(user.username)
+                            return user
+                        except Exception as e:
+                            raise Exception("Oauth request_loader for oauth_register.userinfo() failed! Check") from e
             return None
 
