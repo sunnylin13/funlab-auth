@@ -37,6 +37,44 @@ class AuthView(SecurityPlugin):
         self.oauth_name_inuse:str = None
         self.register_routes()
         self.register_login_handler()
+        if self.plugin_config.get('HOOK_EXAMPLES', False):
+            self._register_hook_examples()
+
+    def _register_hook_examples(self):
+        if not hasattr(self.app, 'hook_manager'):
+            return
+
+        self.app.hook_manager.register_hook(
+            'view_layouts_base_html_head',
+            self._hook_example_head,
+            priority=50,
+            plugin_name=self.name,
+        )
+        self.app.hook_manager.register_hook(
+            'controller_before_request',
+            self._hook_example_before_request,
+            priority=50,
+            plugin_name=self.name,
+        )
+        self.app.hook_manager.register_hook(
+            'controller_after_request',
+            self._hook_example_after_request,
+            priority=50,
+            plugin_name=self.name,
+        )
+
+    def _hook_example_head(self, context):
+        return '<!-- auth hook example -->'
+
+    def _hook_example_before_request(self, context):
+        request = context.get('request')
+        if request:
+            self.mylogger.debug(f"Hook example: auth before_request {request.path}")
+
+    def _hook_example_after_request(self, context):
+        response = context.get('response')
+        if response:
+            self.mylogger.debug(f"Hook example: auth after_request {response.status_code}")
 
     def setup_menus(self):
         super().setup_menus()
