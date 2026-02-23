@@ -8,15 +8,15 @@ from flask_login import current_user, login_required, login_user, logout_user
 
 
 from funlab.auth.utils import load_user, save_user
+from funlab.core.enhanced_plugin import EnhancedSecurityPlugin
 from funlab.core.menu import MenuDivider, MenuItem
-from funlab.core.plugin import SecurityPlugin
 from funlab.core.config import Config
 from funlab.flaskr.app import FunlabFlask
 
 from .forms import AddUserForm, LoginForm, ResetPassForm
 from .user import OAuthUser, UserEntity, entities_registry
 
-class AuthView(SecurityPlugin):
+class AuthView(EnhancedSecurityPlugin):
     def __init__(self, app:FunlabFlask):
         super().__init__(app, url_prefix="")
         oauth = OAuth(app)
