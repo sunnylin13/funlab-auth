@@ -32,7 +32,8 @@ class User:
     user_folder: str = field(init=False, default=None) # user folder in the web file system
 
     def __post_init__(self):
-        self.is_admin = False
+        if getattr(self, 'is_admin', None) is None:
+            self.is_admin = False
         if getattr(self, 'password', None) is None:
             self.password = 'account+is+from+external+authentication+provider!!!'
         self.hash_pass()
