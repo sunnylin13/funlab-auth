@@ -9,7 +9,7 @@ from sqlalchemy import Boolean, Column, Integer, String, UniqueConstraint
 # from sqlalchemy import Enum as SQLEnum
 from sqlalchemy.ext.hybrid import hybrid_property
 # all of application's entity, use same registry to declarate
-from funlab.core.appbase import APP_ENTITIES_REGISTRY as entities_registry
+from funlab.core._entity_registry import APP_ENTITIES_REGISTRY as entities_registry
 
 # 本要用 enum定義role, 暫有原始資料compatible問題, 先用原本str
 # class RoleEnum(enum.Enum):
