@@ -7,7 +7,7 @@ from flask import (flash, redirect, render_template, request,
 from flask_login import current_user, login_required, login_user, logout_user
 
 
-from funlab.auth.utils import load_user, save_user
+from funlab.auth.utils import load_user, preload_user_polymorphic_mappers_async, save_user
 from funlab.core.enhanced_plugin import EnhancedSecurityPlugin
 from funlab.core.menu import MenuDivider, MenuItem
 from funlab.core.config import Config
@@ -19,6 +19,7 @@ from .user import OAuthUser, UserEntity, entities_registry
 class AuthView(EnhancedSecurityPlugin):
     def __init__(self, app:FunlabFlask):
         super().__init__(app, url_prefix="")
+        # preload_user_polymorphic_mappers_async()
         oauth = OAuth(app)
         oauth_configs:Config = self.plugin_config
         self.oauths:dict[str:dict] = {}
