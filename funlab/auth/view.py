@@ -17,6 +17,7 @@ from .user import OAuthUser, UserEntity, entities_registry
 class AuthView(EnhancedSecurityPlugin):
     def __init__(self, app:FunlabFlask):
         super().__init__(app, url_prefix="")
+        import finfun.core.entity.manager
         oauth = OAuth(app)
         oauth_configs:Config = self.plugin_config
         self.oauths:dict[str:dict] = {}
