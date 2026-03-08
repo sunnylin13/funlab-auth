@@ -1,3 +1,5 @@
+import importlib
+import threading
 from typing import Type
 from sqlalchemy.orm import Session, with_polymorphic
 from sqlalchemy import select, or_
@@ -19,7 +21,10 @@ def load_user(id_email, sa_session:Session, classes='*')->Type[UserEntity]|None:
         id_email ([type]): [description]
         sa_session ([type]): [description]
     """
-    User: UserEntity = with_polymorphic(UserEntity, classes=classes)
+    if classes == '*':
+        User = UserEntity
+    else:
+        User = with_polymorphic(UserEntity, classes=classes)
     try:
         id = int(id_email)
         stmt = select(User).where(User.id == id)

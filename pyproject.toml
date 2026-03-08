@@ -23,3 +23,10 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.plugins."funlab_plugin"]
 AuthView="funlab.auth.view:AuthView"
+
+# AuthView must load at startup: it calls register_routes() (registers the auth
+# blueprint), register_login_handler() (installs flask-login's @user_loader), and
+# setup_menus() (adds Settings/Logout to the user menu).
+# Without this, flask-login redirects every @login_required page to a 404.
+[tool.funlab_plugin_metadata.AuthView]
+load_mode = "startup"

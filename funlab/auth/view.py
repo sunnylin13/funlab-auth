@@ -5,8 +5,6 @@ from authlib.integrations.flask_client import OAuth
 from flask import (flash, redirect, render_template, request,
                     session, url_for)
 from flask_login import current_user, login_required, login_user, logout_user
-
-
 from funlab.auth.utils import load_user, save_user
 from funlab.core.enhanced_plugin import EnhancedSecurityPlugin
 from funlab.core.menu import MenuDivider, MenuItem
@@ -19,6 +17,7 @@ from .user import OAuthUser, UserEntity, entities_registry
 class AuthView(EnhancedSecurityPlugin):
     def __init__(self, app:FunlabFlask):
         super().__init__(app, url_prefix="")
+        import finfun.core.entity.manager
         oauth = OAuth(app)
         oauth_configs:Config = self.plugin_config
         self.oauths:dict[str:dict] = {}
