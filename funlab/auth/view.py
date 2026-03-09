@@ -1,5 +1,6 @@
 
 import copy
+import time
 
 from authlib.integrations.flask_client import OAuth
 from flask import (flash, redirect, render_template, request,
@@ -149,25 +150,38 @@ class AuthView(EnhancedSecurityPlugin):
         @self.blueprint.route('/oauth_login/<oauth_name>')
         def oauth_login(oauth_name):
             redirect_uri = url_for(f'{self.bp_name}.authorize', oauth_name=oauth_name, _external=True)
+            try:
+                self.mylogger.debug(f"OAuth login start for {oauth_name}, redirect_uri={redirect_uri}")
+                session['_oauth_login_start'] = time.time()
+            except Exception:
+                pass
             return self.get_oauth_register(oauth_name).authorize_redirect(redirect_uri)
 
         @self.blueprint.route('/authorize/<oauth_name>')
         def authorize(oauth_name):
+            start_all = time.time()
             try:
+                self.mylogger.debug(f"Authorize callback start for {oauth_name}")
+                t0 = time.time()
                 token = self.get_oauth_register(oauth_name).authorize_access_token()
+                self.mylogger.debug(f"authorize_access_token took {time.time()-t0:.3f}s, token_present={bool(token)}")
                 if token is None:
                     msg = 'Access denied: reason={0} error={1}'.format(
-                        request.args['error_reason'],
-                        request.args['error_description']
+                        request.args.get('error_reason', ''),
+                        request.args.get('error_description', '')
                     )
+                    self.mylogger.warning(f"OAuth access denied: {msg}")
                     flash(f'{msg}', category='danger')
                     return render_template('sign-in.html', form=LoginForm(), oauths_info=self.oauths_info)
             except Exception as e:
+                self.mylogger.exception("authorize_access_token exception")
                 flash(f'Exception:{str(e)}', category='danger')
                 return render_template('sign-in.html', form=LoginForm(), oauths_info=self.oauths_info)
             try:
                 self.oauth_name_inuse = oauth_name
+                t1 = time.time()
                 userinfo = self.get_oauth_register(oauth_name).userinfo()
+                self.mylogger.debug(f"userinfo() took {time.time()-t1:.3f}s; total authorize handler {time.time()-start_all:.3f}s")
                 oauth_user = OAuthUser(email=self.get_userinfo_field_value(userinfo, 'email'),
                                        username=self.get_userinfo_field_value(userinfo, 'username'),
                                        avatar_url=self.get_userinfo_field_value(userinfo, 'avatar_url'),
