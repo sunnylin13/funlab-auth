@@ -7,7 +7,7 @@ from flask import (flash, redirect, render_template, request,
                     session, url_for)
 from flask_login import current_user, login_required, login_user, logout_user
 from funlab.auth.utils import load_user, save_user
-from funlab.core.enhanced_plugin import EnhancedSecurityPlugin
+from funlab.core.plugin import SecurityPlugin
 from funlab.core.menu import MenuDivider, MenuItem
 from funlab.core.config import Config
 from funlab.flaskr.app import FunlabFlask
@@ -15,7 +15,7 @@ from funlab.flaskr.app import FunlabFlask
 from .forms import AddUserForm, LoginForm, ResetPassForm
 from .user import OAuthUser, UserEntity, entities_registry
 
-class AuthView(EnhancedSecurityPlugin):
+class AuthView(SecurityPlugin):
     def __init__(self, app:FunlabFlask):
         super().__init__(app, url_prefix="")
         import finfun.core.entity.manager
