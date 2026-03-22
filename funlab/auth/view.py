@@ -3,11 +3,13 @@ import copy
 import time
 
 from authlib.integrations.flask_client import OAuth
-from flask import (flash, redirect, render_template, request,
+from flask import (flash, jsonify, redirect, render_template, request,
                     session, url_for)
-from flask_login import current_user, login_required, login_user, logout_user
+from flask_login import (
+    LoginManager, current_user, login_required, login_user, logout_user
+)
 from funlab.auth.utils import load_user, save_user
-from funlab.core.plugin import SecurityPlugin
+from funlab.core.plugin import Plugin
 from funlab.core.menu import MenuDivider, MenuItem
 from funlab.core.config import Config
 from funlab.flaskr.app import FunlabFlask
@@ -15,9 +17,27 @@ from funlab.flaskr.app import FunlabFlask
 from .forms import AddUserForm, LoginForm, ResetPassForm
 from .user import OAuthUser, UserEntity, entities_registry
 
-class AuthView(SecurityPlugin):
-    def __init__(self, app:FunlabFlask):
+
+class AuthView(Plugin):
+    """Authentication plugin.
+
+    Inherits :class:`~funlab.core.plugin.Plugin` directly and satisfies
+    :class:`~funlab.core.plugin.ISecurityProvider` structurally by exposing
+    a ``login_manager`` property.  No dependency on ``SecurityPlugin`` is
+    required; the plugin manager detects this plugin as a security provider
+    via duck-typing (``ISecurityProvider`` runtime-checkable Protocol).
+    """
+
+    def __init__(self, app: FunlabFlask):
         super().__init__(app, url_prefix="")
+        # Reuse app-owned LoginManager when available; otherwise fallback-create.
+        self._login_manager = getattr(app, 'login_manager', None) or LoginManager()
+        if getattr(app, 'login_manager', None) is None:
+            self._login_manager.init_app(app)
+        self._login_manager.login_view = self.bp_name + ".login"
+        self._login_manager.login_message = "Please log in to access this page."
+        self._login_manager.login_message_category = "warning"
+        self._login_manager.needs_refresh_message_category = "info"
         import finfun.core.entity.manager
         oauth = OAuth(app)
         oauth_configs:Config = self.plugin_config
@@ -37,6 +57,8 @@ class AuthView(SecurityPlugin):
         self.oauth_name_inuse:str = None
         self.register_routes()
         self.register_login_handler()
+        if hasattr(self._login_manager, '_default_user_loader'):
+            delattr(self._login_manager, '_default_user_loader')
         if self.plugin_config.get('HOOK_EXAMPLES', False):
             self._register_hook_examples()
 
@@ -104,6 +126,16 @@ class AuthView(SecurityPlugin):
                     ])
 
 
+
+    @property
+    def login_manager(self) -> LoginManager:
+        """Expose LoginManager so plugin_manager can wire it into the Flask app.
+
+        This satisfies the :class:`~funlab.core.plugin.ISecurityProvider`
+        Protocol via structural (duck-type) matching — no inheritance from
+        ``SecurityPlugin`` is needed.
+        """
+        return self._login_manager
 
     @property
     def entities_registry(self):
@@ -279,7 +311,15 @@ class AuthView(SecurityPlugin):
     def register_login_handler(self):
         @self.login_manager.unauthorized_handler
         def unauthorized_handler():
-            return render_template('error-403.html'), 403
+            wants_json = (
+                request.is_json
+                or request.path.startswith('/api/')
+                or '/api/' in request.path
+                or request.accept_mimetypes.best == 'application/json'
+            )
+            if wants_json:
+                return jsonify({'error': 'authentication_required'}), 401
+            return redirect(url_for(self.login_manager.login_view, next=request.url))
 
         @self.login_manager.user_loader
         def user_loader(id):

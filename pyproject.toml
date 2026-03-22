@@ -30,3 +30,4 @@ AuthView="funlab.auth.view:AuthView"
 # Without this, flask-login redirects every @login_required page to a 404.
 [tool.funlab_plugin_metadata.AuthView]
 load_mode = "startup"
+provides_security = true
