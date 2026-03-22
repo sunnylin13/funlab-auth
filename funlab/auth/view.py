@@ -76,6 +76,13 @@ class AuthView(SecurityPlugin):
         if response:
             self.mylogger.debug(f"Hook example: auth after_request {response.status_code}")
 
+    def _perform_health_check(self) -> bool:
+        if getattr(self, '_blueprint_registered', True) is False:
+            return False
+        if getattr(self.app, 'login_manager', None) is None:
+            return False
+        return True
+
     def setup_menus(self):
         super().setup_menus()
         self.app.append_usermenu([MenuItem(title='Settings',
