@@ -1,8 +1,9 @@
 # 013 self stuff
+poetry.lock
 *-py3-none-any/
 *-py3-none-any.*
 .data/
-docs/
+# docs/
 out/
 web_source/
 ./dist

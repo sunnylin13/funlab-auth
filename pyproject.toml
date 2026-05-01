@@ -16,6 +16,11 @@ requests = "^2.31.0"
 bcrypt = "^4.1.2"
 flask-wtf = "^1.2.1"
 funlab-flaskr = {path = "../funlab-flaskr", develop = true}  #
+pydantic = "^2.13.3"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^9.0.3"
+pytest-cov = "^7.1.0"
 
 [build-system]
 requires = ["poetry-core"]
@@ -28,6 +33,10 @@ AuthView="funlab.auth.view:AuthView"
 # blueprint), register_login_handler() (installs flask-login's @user_loader), and
 # setup_menus() (adds Settings/Logout to the user menu).
 # Without this, flask-login redirects every @login_required page to a 404.
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+
 [tool.funlab_plugin_metadata.AuthView]
 load_mode = "startup"
 provides_security = true
