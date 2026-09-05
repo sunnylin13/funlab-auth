@@ -27,21 +27,16 @@ dev = [
     "pytest-cov>=7.1.0,<8",
 ]
 
-# Cross-repo dependencies resolve via the workspace root's [tool.uv.sources];
-# member-level sources are intentionally omitted (each repo is its own git root,
-# so `workspace = true` here would bind to this repo, not the outer workspace).
+[tool.uv.sources]
+funlab-flaskr = { workspace = true }
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-# PEP 420 namespace package (shared 'funlab' namespace).
 packages = ["funlab"]
 
-# AuthView must load at startup: it calls register_routes() (registers the auth
-# blueprint), register_login_handler() (installs flask-login's @user_loader), and
-# setup_menus() (adds Settings/Logout to the user menu).
-# Without this, flask-login redirects every @login_required page to a 404.
 [tool.pytest.ini_options]
 pythonpath = ["."]
 testpaths = ["tests"]
