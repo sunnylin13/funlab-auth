@@ -22,6 +22,7 @@
           <a href="." class="navbar-brand navbar-brand-autodark"><img src="{{ config.APP_LOGO }}" height="36" alt="{{ config.APP_NAME }}"></a>
         </div>
         <form id="register" class="card card-md" action="{{ url_for('auth_bp.register') }}" method="post" autocomplete="off" novalidate>
+          {{ form.hidden_tag() }}
           <div class="card-body">
             <h2 class="card-title text-center mb-4">Create new account</h2>
             <div class="mb-3">
