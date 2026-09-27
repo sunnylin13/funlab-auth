@@ -325,6 +325,10 @@ class AuthView(Plugin):
         def user_loader(id):
             with self.app.dbmgr.session_context() as session:
                 user = load_user(id, session)
+                if user is None:
+                    # 帳號已刪除/id 不存在：回 None 讓 flask-login 走匿名+unauthorized 流程
+                    # （注意：get_user_data_storage_path 會 mkdir，回 None 前不得呼叫）
+                    return None
                 user.user_folder = self.app.get_user_data_storage_path(user.username)
                 return user
 
@@ -333,6 +337,8 @@ class AuthView(Plugin):
             with self.app.dbmgr.session_context() as sa_session:
                 if 'user_id' in session:
                     user = load_user(session['user_id'], sa_session)
+                    if user is None:
+                        return None
                     user.user_folder = self.app.get_user_data_storage_path(user.username)
                     return user
                 elif self.oauth_name_inuse and (oauth_register:=self.get_oauth_register()):

@@ -19,14 +19,19 @@ for _p in (_FUNLAB_LIBS, _AUTH_ROOT):
         sys.path.insert(0, _p)
 
 # ---------------------------------------------------------------------------
-# stub funlab.core._entity_registry（funlab-libs 版本可能缺此模組）
+# stub funlab.core._entity_registry（僅當 funlab-libs 版本缺此模組時）
+# 真模組可用時一律優先：stub 無 metadata 等介面，會使整合測試的
+# FunlabFlask create_all 崩潰（dbmgr 需要 registry.metadata）。
 # ---------------------------------------------------------------------------
 if "funlab.core._entity_registry" not in sys.modules:
-    class _RegistryStub:
-        """模擬 APP_ENTITIES_REGISTRY，讓 @mapped 裝飾器直接回傳 cls。"""
-        def mapped(self, cls):
-            return cls
+    try:
+        import funlab.core._entity_registry  # noqa: F401
+    except ImportError:
+        class _RegistryStub:
+            """模擬 APP_ENTITIES_REGISTRY，讓 @mapped 裝飾器直接回傳 cls。"""
+            def mapped(self, cls):
+                return cls
 
-    _entity_registry_mod = types.ModuleType("funlab.core._entity_registry")
-    _entity_registry_mod.APP_ENTITIES_REGISTRY = _RegistryStub()
-    sys.modules["funlab.core._entity_registry"] = _entity_registry_mod
+        _entity_registry_mod = types.ModuleType("funlab.core._entity_registry")
+        _entity_registry_mod.APP_ENTITIES_REGISTRY = _RegistryStub()
+        sys.modules["funlab.core._entity_registry"] = _entity_registry_mod

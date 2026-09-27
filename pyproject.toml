@@ -40,6 +40,9 @@ packages = ["funlab"]
 [tool.pytest.ini_options]
 pythonpath = ["."]
 testpaths = ["tests"]
+markers = [
+    "integration: 需要完整 FunlabFlask（tmp sqlite + test_client）的整合測試",
+]
 
 [tool.funlab_plugin_metadata.AuthView]
 load_mode = "startup"
