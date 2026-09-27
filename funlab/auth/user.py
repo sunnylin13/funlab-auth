@@ -18,6 +18,15 @@ from funlab.core._entity_registry import APP_ENTITIES_REGISTRY as entities_regis
 #     MANAGER = 'MANAGER'
 #     SUPERVISOR = 'SUPERVISOR'
 
+# OAuth 帳號的佔位密碼（明文，建立時會被雜湊）；此類帳號禁止密碼登入
+EXTERNAL_AUTH_PLACEHOLDER = 'account+is+from+external+authentication+provider!!!'
+
+# check_password_login() 的回傳碼
+LOGIN_OK = 'ok'
+LOGIN_BAD_PASSWORD = 'bad_password'
+LOGIN_EXTERNAL_ACCOUNT = 'external_account'
+LOGIN_INACTIVE = 'inactive'
+
 @dataclass
 class User:
     id:int = field(init=False)
@@ -35,7 +44,7 @@ class User:
         if getattr(self, 'is_admin', None) is None:
             self.is_admin = False
         if getattr(self, 'password', None) is None:
-            self.password = 'account+is+from+external+authentication+provider!!!'
+            self.password = EXTERNAL_AUTH_PLACEHOLDER
         self.hash_pass()
 
     def to_userentity(self, exist=False):
@@ -80,9 +89,27 @@ class User:
 
     def verify_pass(self, provided_password:str):
         """Verify a stored password against one provided by user"""
-        hashed = base64.b64decode(self.password.encode())
-        result = bcrypt.checkpw(provided_password.encode(), hashed)
-        return result
+        if not provided_password or not self.password:
+            return False
+        try:
+            hashed = base64.b64decode(self.password.encode())
+            return bcrypt.checkpw(provided_password.encode(), hashed)
+        except (ValueError, TypeError):  # 非 bcrypt 格式的舊資料一律視為不符
+            return False
+
+    def is_external_account(self) -> bool:
+        """帳號是否由 OAuth 建立（密碼欄為佔位值）。"""
+        return self.verify_pass(EXTERNAL_AUTH_PLACEHOLDER)
+
+    def check_password_login(self, provided_password: str) -> str:
+        """密碼登入判定，回傳 LOGIN_* 常數；只有 LOGIN_OK 可呼叫 login_user()。"""
+        if self.is_external_account():
+            return LOGIN_EXTERNAL_ACCOUNT
+        if not self.verify_pass(provided_password):
+            return LOGIN_BAD_PASSWORD
+        if not self.is_active:
+            return LOGIN_INACTIVE
+        return LOGIN_OK
 
 @dataclass
 class OAuthUser(User):

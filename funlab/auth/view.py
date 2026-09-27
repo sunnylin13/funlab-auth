@@ -15,7 +15,8 @@ from funlab.core.config import Config
 from funlab.flaskr.app import FunlabFlask
 
 from .forms import AddUserForm, LoginForm, ResetPassForm
-from .user import OAuthUser, UserEntity, entities_registry
+from .user import (LOGIN_EXTERNAL_ACCOUNT, LOGIN_INACTIVE, LOGIN_OK,
+                   OAuthUser, UserEntity, entities_registry)
 
 
 class AuthView(Plugin):
@@ -163,22 +164,27 @@ class AuthView(Plugin):
         def login(style):
             login_form = LoginForm(request.form)
             if 'login' in request.form:
-                email = request.form['email']
-                password = request.form['password']
-                rememberme = request.form['rememberme']
+                email = request.form.get('email', '')
+                password = request.form.get('password', '')
+                # checkbox 未勾選時瀏覽器不送此欄位，須用 .get
+                rememberme = request.form.get('rememberme') == 'y'
                 # Locate user
                 with self.app.dbmgr.session_context() as session:
                     user = load_user(email, session)
-                    if user:
-                        user.user_folder = self.app.get_user_data_storage_path(user.username)
-                        login_user(user, remember=(rememberme=='y'))
-                        return redirect(url_for('root_bp.home'))
-                    elif not user:
+                    if not user:
                         flash('User email not exist. Please check.', "warning")
-                    elif user.verify_pass('account+is+from+external+authentication+provider!!!'):
-                        flash('Your account is from external authentication provider, please login with proper provider below.', "info")
                     else:
-                        flash("Incorrect password. Please try again.", "warning")
+                        result = user.check_password_login(password)
+                        if result == LOGIN_OK:
+                            user.user_folder = self.app.get_user_data_storage_path(user.username)
+                            login_user(user, remember=rememberme)
+                            return redirect(url_for('root_bp.home'))
+                        elif result == LOGIN_EXTERNAL_ACCOUNT:
+                            flash('Your account is from external authentication provider, please login with proper provider below.', "info")
+                        elif result == LOGIN_INACTIVE:
+                            flash("Account is not active. Please contact administrator.", "warning")
+                        else:
+                            flash("Incorrect password. Please try again.", "warning")
                 return render_template('/sign-in.html', form=login_form, oauths_info=self.oauths_info)
             elif current_user and current_user.is_authenticated:
                 return redirect(url_for('root_bp.home'))
@@ -275,33 +281,41 @@ class AuthView(Plugin):
                 return render_template('/register.html', form=create_account_form)
 
         @self.blueprint.route('/resetpass', methods=['GET', 'POST'])
+        @login_required
         def resetpass():
+            # 只允許已登入使用者變更「自己的」密碼；OAuth 帳號不可設定密碼
             resetpass_form = ResetPassForm(request.form)
             if 'resetpass' in request.form:
-                old_password = request.form['old_password']
-                email = request.form['email']
-                new_password = request.form['new_password']
-                confirm_password = request.form['confirm_password']
-                if new_password != confirm_password:
+                old_password = request.form.get('old_password', '')
+                email = request.form.get('email', '')
+                new_password = request.form.get('new_password', '')
+                confirm_password = request.form.get('confirm_password', '')
+                if email.strip().lower() != (current_user.email or '').lower():
+                    flash('You can only change your own password.', category='danger')
+                    return render_template('/resetpass.html', form=resetpass_form)
+                if not new_password or new_password != confirm_password:
                     flash('New password not consistancy. Please re-enter.', category='warning')
                     return render_template('/resetpass.html', form=resetpass_form)
                 with self.app.dbmgr.session_context() as sa_session:
-                    user = load_user(email, sa_session)
-                    if user and (user.verify_pass(old_password) or user.verify_pass('account+is+from+external+authentication+provider!!!')):
-                        user.user_folder = self.app.get_user_data_storage_path(user.username)
-                        user.password = new_password
-                        user.hash_pass()
-                        save_user(user, sa_session)
-                        flash('Password reset successfully. Please login again.', category='success')
-                        return render_template('/sign-in.html', form=LoginForm(), oauths_info=self.oauths_info)
-                    elif user is not None:
+                    user = load_user(current_user.id, sa_session)
+                    if user is None:
+                        flash('User not exist. Please check.', "warning")
+                        return render_template('/resetpass.html', form=resetpass_form)
+                    result = user.check_password_login(old_password)
+                    if result == LOGIN_EXTERNAL_ACCOUNT:
+                        flash('Your account is from external authentication provider; password cannot be set here.', category='info')
+                        return render_template('/resetpass.html', form=resetpass_form)
+                    if result != LOGIN_OK:
                         flash('Wrong password! Please check.', category='danger')
                         return render_template('/resetpass.html', form=resetpass_form)
-                    elif user is None:
-                        flash('User email not exist. Please check.', "warning")
-                        return render_template('/resetpass.html', form=resetpass_form)
-                    else:
-                        return render_template('/resetpass.html', form=resetpass_form)
+                    user.user_folder = self.app.get_user_data_storage_path(user.username)
+                    user.password = new_password
+                    user.hash_pass()
+                    save_user(user, sa_session)
+                logout_user()
+                flash('Password reset successfully. Please login again.', category='success')
+                return render_template('/sign-in.html', form=LoginForm(), oauths_info=self.oauths_info)
+            return render_template('/resetpass.html', form=resetpass_form)
 
         @self.blueprint.route('/settings')
         @login_required
