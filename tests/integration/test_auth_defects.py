@@ -4,6 +4,9 @@
 修好對應 AUTH-## 後，本檔對應測試會 FAIL（= 修復生效信號），屆時應將該測試
 反轉為防回歸斷言（文件各項已給出反轉後的版本）。
 
+狀態（R1 收尾 2026-09-28）：AUTH-01 三條與 AUTH-03 一條已按 PLAN (e) 反轉為
+防回歸斷言（A4/A6-1 修復已合併 main）；其餘測試仍為缺陷重現，待對應修復合併後反轉。
+
 執行（需要 finfun 環境；tmp sqlite，不觸網、不碰正式庫）：
     cd funlab-auth && source ~/.venv/fund13/bin/activate
     python -m pytest -q <本檔路徑>
@@ -81,25 +84,26 @@ def app():
 PASSWORD = "***" + "Right"
 
 
-class TestAUTH01_UsersLoaderCrash500:
-    """AUTH-01（L9）：user_loader/request_loader 未處理 None → 500。"""
+class TestAUTH01_UsersLoaderNoneGuard:
+    """AUTH-01（L9）防回歸（R1 收尾反轉，PLAN AUTH-01 (e) 反轉版）：
+    user_loader/request_loader 對已刪除使用者回 None → 匿名+unauthorized 流程，絕不 500。
+    （原為缺陷重現斷言「== 500」；A4 修復合併 main@81d519f 後按 PLAN §0 反轉。）"""
 
-    def test_deleted_user_cookie_gives_500(self, app):
+    def test_deleted_user_cookie_anonymous_not_500(self, app):
         c = app.test_client()
         with c.session_transaction() as sess:
             sess["_user_id"] = "99999"   # 已刪除使用者的舊 cookie
             sess["_fresh"] = True
-        assert c.get("/login/").status_code == 500  # 修復後應為 200/302（匿名處理）
+        assert c.get("/login/").status_code in (200, 302)  # 匿名處理，絕不 500
 
-    def test_user_loader_callback_raises_not_returns_none(self, app):
-        with pytest.raises(AttributeError):
-            app.login_manager._user_callback("99999")  # 修復後應回 None
+    def test_user_loader_callback_returns_none(self, app):
+        assert app.login_manager._user_callback("99999") is None  # 回 None 走匿名流程
 
-    def test_request_loader_stale_user_id_gives_500(self, app):
+    def test_request_loader_stale_user_id_not_500(self, app):
         c = app.test_client()
         with c.session_transaction() as sess:
             sess["user_id"] = "99999"    # request_loader 的 session 分支
-        assert c.get("/settings").status_code == 500  # 修復後應為 302（導向登入）
+        assert c.get("/settings").status_code in (200, 302)  # 302 導向登入，非 500
 
 
 class TestAUTH02_OpenRegistration:
@@ -183,14 +187,17 @@ class TestAUTH08_SessionNotRotated:
 
 
 @pytest.mark.parametrize("auth_extra,expected_loaded", [
-    ("HOOK_EXAMPLES = true\n", False),   # 標量鍵 → oauth 迴圈 .pop() 炸 → AuthView 全滅
+    ("HOOK_EXAMPLES = true\n", True),    # 標量鍵被跳過 → AuthView 存活（fail-closed）
 ])
-def test_AUTH03_scalar_config_key_degrades_to_public(auth_extra, expected_loaded):
-    """AUTH-03：[AuthView] 標量鍵使 AuthView 初始化失敗 → fail-open 降回 PUBLIC。"""
+def test_AUTH03_scalar_config_key_keeps_authview_secured(auth_extra, expected_loaded):
+    """AUTH-03 防回歸（R1 收尾反轉，PLAN AUTH-03 (e) 反轉版）：
+    [AuthView] 標量鍵不再炸毀 AuthView 初始化 → 驗證仍生效（SECURED），provider 仍註冊。
+    （原為缺陷重現斷言「auth 未載入 + PUBLIC」；A6-1 修復合併 main 後按 PLAN §0 反轉。）"""
     a = _make_app("authdefect3", auth_extra=auth_extra)
     try:
         assert ("auth" in a.plugins) is expected_loaded
-        assert str(a.security_mode).endswith("PUBLIC")  # 整站無驗證仍提供服务 = fail-open
+        assert str(a.security_mode).endswith("SECURED")
+        assert list(a.plugins["auth"].oauths) == ["probe_google"]  # provider 仍註冊
     finally:
         a.dbmgr.release()
 
