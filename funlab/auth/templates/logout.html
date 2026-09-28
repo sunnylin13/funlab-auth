@@ -5,7 +5,7 @@
 <!-- Specific Page CSS goes HERE  -->
 {% block stylesheets %}{% endblock stylesheets %}
 
-{% block content %}
+{% block page_body %}
 
     <main>
         <section class="vh-100 d-flex align-items-center justify-content-center">
@@ -16,6 +16,11 @@
                             <h1 class="mt-5">
                                 Logout
                             </h1>
+                            <form method="post" action="{{ url_for('auth_bp.logout') }}">
+                              {{ form.hidden_tag() if form }}
+                              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                              <button type="submit" class="btn btn-danger">Confirm Logout</button>
+                            </form>
                             <div class="empty-action">
                                 <a href="./." class="btn btn-primary">
                                   <!-- Download SVG icon from http://tabler-icons.io/i/arrow-left -->
@@ -30,7 +35,7 @@
         </section>
     </main>
 
-{% endblock content %}
+{% endblock page_body %}
 
 <!-- Specific Page JS goes HERE  -->
 {% block javascripts %}{% endblock javascripts %}

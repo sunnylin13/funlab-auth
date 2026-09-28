@@ -28,7 +28,11 @@ def load_user(id_email, sa_session:Session, classes='*')->Type[UserEntity]|None:
     try:
         id = int(id_email)
         stmt = select(User).where(User.id == id)
-    except:
+    except (TypeError, ValueError):
+        # AUTH-10：非整數輸入（email、None、亂字串）→ 依 email 查詢；
+        # 其他例外（DB 故障等）必須上拋，不得誤判為「查無此人」
+        if id_email is None:
+            return None
         stmt = select(User).where(User.email == id_email)
     user = sa_session.execute(stmt).scalar()
     return user

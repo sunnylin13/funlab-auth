@@ -57,3 +57,19 @@ def auth_app():
     app.config["WTF_CSRF_ENABLED"] = False
     yield app
     app.dbmgr.release()
+
+
+@pytest.fixture(autouse=True)
+def _reset_login_rate_limit(request):
+    """AUTH-05 相容性：限流計數為 per-app 記憶體態，同 module 多測試共用同 IP
+    （127.0.0.1）會互相耗盡額度。每條測試前清零，保持各測試獨立。
+    限流本體行為由 tests/integration/test_login_rate.py 專門驗證。"""
+    for name in ("auth_app", "app", "auth_app_oauth"):
+        if name in request.fixturenames:
+            try:
+                app = request.getfixturevalue(name)
+            except Exception:
+                continue
+            auth = app.plugins.get("auth") if hasattr(app, "plugins") else None
+            if auth is not None and hasattr(auth, "_login_attempts"):
+                auth._login_attempts.clear()

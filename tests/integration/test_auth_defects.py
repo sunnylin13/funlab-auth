@@ -4,8 +4,9 @@
 修好對應 AUTH-## 後，本檔對應測試會 FAIL（= 修復生效信號），屆時應將該測試
 反轉為防回歸斷言（文件各項已給出反轉後的版本）。
 
-狀態（R1 收尾 2026-09-28）：AUTH-01 三條與 AUTH-03 一條已按 PLAN (e) 反轉為
-防回歸斷言（A4/A6-1 修復已合併 main）；其餘測試仍為缺陷重現，待對應修復合併後反轉。
+狀態（B3 2026-09-28）：AUTH-01 三條、AUTH-03 一條（R1 收尾）、AUTH-02/04×2/
+05/07×2、AUTH-12 註冊鎖死路徑（B3）已按 PLAN (e) 反轉為防回歸斷言
+（修復已合併 main／本 PR）；其餘測試仍為缺陷重現，待對應修復合併後反轉。
 
 執行（需要 finfun 環境；tmp sqlite，不觸網、不碰正式庫）：
     cd funlab-auth && source ~/.venv/fund13/bin/activate
@@ -81,7 +82,8 @@ def app():
     a.dbmgr.release()
 
 
-PASSWORD = "***" + "Right"
+PASSWORD = "**" + "Right"   # 與上方 fixture 種子帳號 probe@x.io 的密碼一致
+                            # （原值多一個 * 致登入失敗，舊缺陷斷言 GET=302 屬僥倖 PASS）
 
 
 class TestAUTH01_UsersLoaderNoneGuard:
@@ -107,48 +109,55 @@ class TestAUTH01_UsersLoaderNoneGuard:
 
 
 class TestAUTH02_OpenRegistration:
-    """AUTH-02（L10）：/register 匿名開放，註冊即用。"""
+    """AUTH-02 防回歸（B3 修復後反轉，PLAN AUTH-02 (e) 反轉版；Q3 裁示
+    ALLOW_REGISTER 預設 false＋邀請制）：匿名不可註冊。
+    （原為缺陷重現斷言「匿名可註冊即用」；B3 修復後按 PLAN §0 反轉。）"""
 
-    def test_anonymous_can_register_and_login(self, app):
+    def test_anonymous_cannot_register(self, app):
         c = app.test_client()
         r = c.post("/register", data={"register": "1", "username": "mallory",
-                                      "email": "mallory@x.io", "password": "***"})
-        assert b"Account is created successfully" in r.data  # 修復後（預設關閉）應被拒
-        r2 = c.post("/login/", data={"login": "1", "email": "mallory@x.io",
+                                      "email": "mallory2@x.io", "password": "***"})
+        assert r.status_code == 302                  # 導向登入，不建立帳號
+        r2 = c.post("/login/", data={"login": "1", "email": "mallory2@x.io",
                                      "password": "***"})
-        assert r2.status_code == 302     # 新帳號立即取得登入權限
+        assert b"User email not exist" in r2.data    # 帳號未被建立
 
 
 class TestAUTH04_RequestLoaderBearerBranch:
-    """AUTH-04：Authorization/google_token 直接打 provider userinfo，失敗炸 500。"""
+    """AUTH-04 防回歸（B3 修復後反轉，PLAN AUTH-04 (e) 反轉版）：
+    任意 Bearer/google_token 走 unauthorized 流程（302/401），絕不 500。
+    （原為缺陷重現斷言「== 500」；B3 修復後按 PLAN §0 反轉。）"""
 
-    def test_arbitrary_bearer_header_crashes_request_loader(self, app):
+    def test_arbitrary_bearer_header_never_500(self, app):
         app.plugins["auth"].oauth_name_inuse = "probe_google"
         try:
             r = app.test_client().get("/settings",
                                       headers={"Authorization": "***"})
-            assert r.status_code == 500  # 修復後應為 401/302，非 500
+            assert r.status_code in (302, 401)   # 拒絕但不 500
         finally:
             app.plugins["auth"].oauth_name_inuse = None
 
-    def test_google_token_query_param_crashes(self, app):
+    def test_google_token_query_param_never_500(self, app):
         app.plugins["auth"].oauth_name_inuse = "probe_google"
         try:
             r = app.test_client().get("/settings?google_token=***")
-            assert r.status_code == 500
+            assert r.status_code in (302, 401)
         finally:
             app.plugins["auth"].oauth_name_inuse = None
 
 
 class TestAUTH0506_BruteForceAndEnumeration:
-    """AUTH-05 無速率限制；AUTH-06 列舉訊息可區分帳號是否存在。"""
+    """AUTH-05 防回歸（B3 修復後反轉，PLAN AUTH-05 (e)；Q4 裁示 per-IP+per-email
+    記憶體計數）；AUTH-06（未修）仍為缺陷重現。"""
 
-    def test_twenty_wrong_passwords_never_locked_out(self, app):
+    def test_sixth_wrong_password_locked_out(self, app):
         c = app.test_client()
-        codes = {c.post("/login/", data={"login": "1", "email": "probe@x.io",
+        codes = [c.post("/login/", data={"login": "1", "email": "probe@x.io",
                                          "password": "***"}).status_code
-                 for _ in range(20)}
-        assert codes == {200}            # 無任何 429/鎖定
+                 for _ in range(20)]
+        assert codes[0] == 200                       # 首次正常處理
+        assert 429 in codes                          # 修復後：超窗必見 429
+        assert set(codes) <= {200, 429}
 
     def test_existence_messages_differ(self, app):
         c = app.test_client()
@@ -161,17 +170,23 @@ class TestAUTH0506_BruteForceAndEnumeration:
 
 
 class TestAUTH07_GetLogout:
-    """AUTH-07：logout 為 GET（CSRFProtect 不覆蓋 GET）→ 跨站強制登出。"""
+    """AUTH-07 防回歸（B3 修復後反轉，PLAN AUTH-07 (e) 反轉版）：
+    GET 顯示確認頁不登出；POST 才登出（CSRF 由全域 CSRFProtect 於正式環境強制）。
+    （原為缺陷重現斷言「GET=302 登出 / POST=405」；B3 修復後按 PLAN §0 反轉。）"""
 
-    def test_logout_works_via_get(self, app):
+    def test_logout_get_shows_confirmation_not_logout(self, app):
         c = app.test_client()
         c.post("/login/", data={"login": "1", "email": "probe@x.io", "password": PASSWORD})
-        assert c.get("/logout").status_code == 302   # 修復後 GET 應 405，僅 POST
+        assert c.get("/logout").status_code == 200   # 確認頁，非直接登出
+        with c.session_transaction() as sess:
+            assert "_user_id" in sess                # session 仍存活
 
-    def test_logout_post_not_supported(self, app):
+    def test_logout_post_logs_out(self, app):
         c = app.test_client()
         c.post("/login/", data={"login": "1", "email": "probe@x.io", "password": PASSWORD})
-        assert c.post("/logout").status_code == 405
+        assert c.post("/logout").status_code == 302
+        with c.session_transaction() as sess:
+            assert "_user_id" not in sess
 
 
 class TestAUTH08_SessionNotRotated:
@@ -214,6 +229,8 @@ class TestAUTH11_12_UserModel:
             u.is_anonymous               # 修復後應回 False/True，不raise
 
     def test_register_with_placeholder_password_locks_account(self, app):
+        """AUTH-12 原缺陷路徑已被 AUTH-02 預設關閉註冊封死（B3）：
+        註冊關閉 → 帳號未建立 → 登入不可能被導向 external。保留防禦斷言。"""
         from funlab.auth.user import EXTERNAL_AUTH_PLACEHOLDER
         c = app.test_client()
         c.post("/register", data={"register": "1", "username": "tricky",
@@ -221,5 +238,5 @@ class TestAUTH11_12_UserModel:
                                   "password": EXTERNAL_AUTH_PLACEHOLDER})
         r = c.post("/login/", data={"login": "1", "email": "tricky@x.io",
                                     "password": EXTERNAL_AUTH_PLACEHOLDER})
-        # 用自己剛註冊的密碼登入 → 被判定 external account → 永遠無法密碼登入（自我鎖死）
-        assert b"external authentication provider" in r.data
+        # 修復後：註冊被拒（預設 ALLOW_REGISTER=false），帳號不存在
+        assert b"User email not exist" in r.data
