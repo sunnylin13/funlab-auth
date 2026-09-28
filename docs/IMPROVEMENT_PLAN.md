@@ -3,7 +3,8 @@
 > 產出者：fund13-dev-arch（2026-09-27）。讀者：fund13-dev-coder。
 > 所有主張均先讀原始碼核實，並以 tmp sqlite + Flask test_client 實跑驗證（探針輸出見附錄 C）。
 > 引用格式：`相對路徑:符號名`（約 Lxx 為行文時行號，可能有 ±2 漂移）。
-> **現況基線**：working tree 已含 H2（/login 密碼驗證）與 H3（/resetpass 加權）熱修，未 commit。本檔不重複修歷史，只處理未修項。
+> **現況基線**：H2（/login 密碼驗證）與 H3（/resetpass 加權）熱修已入庫（commit 614f891）。本檔不重複修歷史，只處理未修項。
+> **實施狀態（2026-09-28 對帳）**：AUTH-01/03（A4/A6-1 PR#2/#3）、AUTH-04/07/10＋Q3/Q4 裁示項 AUTH-02/05（B3 commit fd8d068：ALLOW_REGISTER 預設 false＋邀請制、/login per-IP＋per-email 內存限流）、AUTH-06/08/09/11/12/13/14（C3 commit 27d7967，含 role NOT NULL 遷移 c9a4e6b8d3f1 已上正式庫）。已部署正式服務。測試基線現況 unit **26 passed**（docs/snippets defects 檔為設計性重現腳本，不計入門控）。本文 (a) 段描述【修復前】缺陷。
 
 ## 0. 環境與測試基礎（所有條目共用）
 
