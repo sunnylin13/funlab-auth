@@ -42,19 +42,26 @@ class AuthView(Plugin):
         import finfun.core.entity.manager
         oauth = OAuth(app)
         oauth_configs:Config = self.plugin_config
-        self.oauths:dict[str:dict] = {}
+        self.oauths: dict[str, dict] = {}
         default_userinfo_keys = {'email':'email', 'username':'username', 'avatar_url':'avatar_url'}
-        try:
-            for oauth_name in oauth_configs.keys(): #  oauth_names:
-                oauth_cfg = oauth_configs.get(oauth_name)
-                provider = oauth_cfg.pop('provider')
-                userinfo_key_mapping =  copy.copy(default_userinfo_keys)
-                userinfo_key_mapping.update(oauth_cfg.pop('userinfo_key_mapping', {}))
+        for oauth_name in list(oauth_configs.keys()):
+            oauth_cfg = oauth_configs.get(oauth_name)
+            # [AuthView] 內的標量鍵（HOOK_EXAMPLES / ALLOW_REGISTER …）不是 OAuth provider，跳過
+            if not hasattr(oauth_cfg, 'pop'):
+                continue
+            provider = oauth_cfg.pop('provider', None)
+            if provider is None:
+                self.mylogger.warning(f"AuthView OAuth section '{oauth_name}' has no 'provider'; skipped")
+                continue
+            userinfo_key_mapping =  copy.copy(default_userinfo_keys)
+            userinfo_key_mapping.update(oauth_cfg.pop('userinfo_key_mapping', {}))
+            try:
                 oauth_register = oauth.register(name=oauth_name, **oauth_cfg)
-                self.oauths.update({oauth_name: {'provider':provider, 'register':oauth_register, 'userinfo_key_mapping':userinfo_key_mapping}})
-        except Exception as e:
-            msg = f'{oauth_name} OAuth register fail, please check config:{oauth_cfg}'
-            raise e from Exception(msg)
+            except Exception as e:
+                # 單一 provider 設定壞掉不拖垮整個 AuthView（否則整站 fail-open）
+                self.mylogger.error(f"{oauth_name} OAuth register fail, please check config: {e}")
+                continue
+            self.oauths.update({oauth_name: {'provider':provider, 'register':oauth_register, 'userinfo_key_mapping':userinfo_key_mapping}})
         self.oauth_name_inuse:str = None
         self.register_routes()
         self.register_login_handler()
