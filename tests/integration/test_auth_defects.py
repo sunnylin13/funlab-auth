@@ -4,9 +4,9 @@
 修好對應 AUTH-## 後，本檔對應測試會 FAIL（= 修復生效信號），屆時應將該測試
 反轉為防回歸斷言（文件各項已給出反轉後的版本）。
 
-狀態（B3 2026-09-28）：AUTH-01 三條、AUTH-03 一條（R1 收尾）、AUTH-02/04×2/
-05/07×2、AUTH-12 註冊鎖死路徑（B3）已按 PLAN (e) 反轉為防回歸斷言
-（修復已合併 main／本 PR）；其餘測試仍為缺陷重現，待對應修復合併後反轉。
+狀態（C3 2026-09-28）：AUTH-01 三條、AUTH-03 一條（R1 收尾）、AUTH-02/04×2/
+05/07×2、AUTH-12 註冊鎖死路徑（B3）、AUTH-06/08/11（C3）已按 PLAN (e) 反轉為
+防回歸斷言（修復已合併 main／本 PR）；其餘測試仍為缺陷重現，待對應修復合併後反轉。
 
 執行（需要 finfun 環境；tmp sqlite，不觸網、不碰正式庫）：
     cd funlab-auth && source ~/.venv/fund13/bin/activate
@@ -120,7 +120,7 @@ class TestAUTH02_OpenRegistration:
         assert r.status_code == 302                  # 導向登入，不建立帳號
         r2 = c.post("/login/", data={"login": "1", "email": "mallory2@x.io",
                                      "password": "***"})
-        assert b"User email not exist" in r2.data    # 帳號未被建立
+        assert b"Invalid email or password" in r2.data  # 帳號未被建立（AUTH-06 統一訊息）
 
 
 class TestAUTH04_RequestLoaderBearerBranch:
@@ -159,14 +159,21 @@ class TestAUTH0506_BruteForceAndEnumeration:
         assert 429 in codes                          # 修復後：超窗必見 429
         assert set(codes) <= {200, 429}
 
-    def test_existence_messages_differ(self, app):
+    def test_existence_messages_identical(self, app):
+        """AUTH-06 防回歸（C3 修復後反轉，PLAN AUTH-06 (e) 反轉版）：
+        不存在與錯密碼共用同一訊息，杜絕列舉。
+        （原為缺陷重現斷言「兩訊息不同→可列舉」；C3 修復後按 PLAN §0 反轉。）"""
         c = app.test_client()
+        # 注意：本 app 無限流清零 fixture，先前測試已灌滿 ip 桶 → 先清
+        app.plugins["auth"]._login_attempts.clear()
         r1 = c.post("/login/", data={"login": "1", "email": "ghost@x.io",
                                      "password": "***"})
+        app.plugins["auth"]._login_attempts.clear()
         r2 = c.post("/login/", data={"login": "1", "email": "probe@x.io",
                                      "password": "***"})
-        assert b"User email not exist" in r1.data
-        assert b"User email not exist" not in r2.data  # 兩訊息不同 → 可列舉
+        assert b"Invalid email or password" in r1.data
+        assert b"Invalid email or password" in r2.data
+        assert b"User email not exist" not in r1.data
 
 
 class TestAUTH07_GetLogout:
@@ -189,16 +196,19 @@ class TestAUTH07_GetLogout:
             assert "_user_id" not in sess
 
 
-class TestAUTH08_SessionNotRotated:
-    """AUTH-08：登入不清 session 舊鍵（登入前植入的鍵跨過登入存活）。"""
+class TestAUTH08_SessionRotation:
+    """AUTH-08 防回歸（C3 修復後反轉，PLAN AUTH-08 (e) 反轉版）：
+    登入手勢清空匿名期殘留鍵。
+    （原為缺陷重現斷言「植入鍵跨過登入存活」；C3 修復後按 PLAN §0 反轉。）"""
 
-    def test_prelogin_session_key_survives_login(self, app):
+    def test_prelogin_session_key_cleared_on_login(self, app):
         c = app.test_client()
         with c.session_transaction() as sess:
             sess["attacker_key"] = "planted"
         c.post("/login/", data={"login": "1", "email": "probe@x.io", "password": PASSWORD})
         with c.session_transaction() as sess:
-            assert "attacker_key" in sess  # 修復後 session.clear() 應清掉
+            assert "attacker_key" not in sess
+            assert "_user_id" in sess
 
 
 @pytest.mark.parametrize("auth_extra,expected_loaded", [
@@ -220,13 +230,15 @@ def test_AUTH03_scalar_config_key_keeps_authview_secured(auth_extra, expected_lo
 class TestAUTH11_12_UserModel:
     """AUTH-11：role=None → is_anonymous 崩潰；AUTH-12：佔位密碼自我鎖死。"""
 
-    def test_is_anonymous_raises_when_role_none(self):
+    def test_is_anonymous_none_role_no_raise(self):
+        """AUTH-11 防回歸（C3 修復後反轉，PLAN AUTH-11 (e) 反轉版）：
+        role=None 不raise（詳見 tests/unit/test_user_props.py）。
+        （原為缺陷重現斷言 pytest.raises(AttributeError)。）"""
         from funlab.auth.user import User
         u = User(email="a@b.io", username="a", password="***",
                  avatar_url="", state="active")
         u.role = None
-        with pytest.raises(AttributeError):
-            u.is_anonymous               # 修復後應回 False/True，不raise
+        assert u.is_anonymous is False
 
     def test_register_with_placeholder_password_locks_account(self, app):
         """AUTH-12 原缺陷路徑已被 AUTH-02 預設關閉註冊封死（B3）：
@@ -239,4 +251,4 @@ class TestAUTH11_12_UserModel:
         r = c.post("/login/", data={"login": "1", "email": "tricky@x.io",
                                     "password": EXTERNAL_AUTH_PLACEHOLDER})
         # 修復後：註冊被拒（預設 ALLOW_REGISTER=false），帳號不存在
-        assert b"User email not exist" in r.data
+        assert b"Invalid email or password" in r.data  # AUTH-06 統一訊息

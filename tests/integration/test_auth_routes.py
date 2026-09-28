@@ -182,11 +182,12 @@ class TestResetpassRegression:
     def test_cannot_change_other_users_password(self, seeded):
         c = seeded.test_client()
         _login(c, "local@x.io", "RightPass!1")
-        c.post("/resetpass", data={"resetpass": "1", "email": "g@x.io",
+        r = c.post("/resetpass", data={"resetpass": "1", "email": "g@x.io",
                                    "old_password": "x", "new_password": "hacked",
                                    "confirm_password": "hacked"})
-        # 注意：flash 在 session（resetpass.html 未渲染 flash——另有文件記錄此 UI 缺陷）
-        assert "your own password" in _flash_text(c)
+        # AUTH-13（C3）後 resetpass.html 渲染 flash 區塊：渲染即消費 session
+        # flash，斷言升級為 body 層（PLAN AUTH-13 (f) 附錄 A 相容性調整）
+        assert "your own password" in r.data.decode("utf-8", "replace")
         from funlab.auth.utils import load_user
         with seeded.dbmgr.session_context() as s:
             assert load_user("g@x.io", s).verify_pass("hacked") is False
@@ -200,10 +201,11 @@ class TestResetpassRegression:
         with c.session_transaction() as sess:
             sess["_user_id"] = str(gid)
             sess["_fresh"] = True
-        c.post("/resetpass", data={"resetpass": "1", "email": "g@x.io",
+        r = c.post("/resetpass", data={"resetpass": "1", "email": "g@x.io",
                                    "old_password": "x", "new_password": "hacked",
                                    "confirm_password": "hacked"})
-        assert "external authentication provider" in _flash_text(c)
+        # AUTH-13（C3）後：flash 由模板消費，斷言升級為 body 層
+        assert "external authentication provider" in r.data.decode("utf-8", "replace")
         with seeded.dbmgr.session_context() as s:
             from funlab.auth.utils import load_user
             assert load_user("g@x.io", s).verify_pass("hacked") is False

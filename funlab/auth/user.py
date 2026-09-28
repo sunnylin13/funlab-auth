@@ -66,7 +66,10 @@ class User:
 
     @property
     def is_anonymous(self):
-        return self.role.upper() == 'GUEST'
+        # AUTH-11：role 可為 NULL（DB 直寫/歷史資料），None 時不得炸 500；
+        # 紅線（PLAN (g)）：維持大小寫不敏感的 'GUEST' 慣例比較
+        role = getattr(self, 'role', None)
+        return bool(role) and str(role).upper() == 'GUEST'
 
     def get_id(self):
         return str(self.id)
@@ -98,7 +101,12 @@ class User:
             return False
 
     def is_external_account(self) -> bool:
-        """帳號是否由 OAuth 建立（密碼欄為佔位值）。"""
+        """帳號是否由 OAuth 建立（密碼欄為佔位值）。
+
+        AUTH-12 文件記錄（PLAN (d)：本輪不改實作）：佔位判定以密碼內容探測，
+        若未來支援「OAuth 帳號補設密碼」，必須改用獨立欄位（如 auth_provider）
+        而非密碼內容探測；註冊入口已由 AUTH-02 擋堵佔位密碼。
+        """
         return self.verify_pass(EXTERNAL_AUTH_PLACEHOLDER)
 
     def check_password_login(self, provided_password: str) -> str:
@@ -133,7 +141,9 @@ class UserEntity(User):
     avatar_url:str = field(metadata={'sa': Column(String)})
     state:str = field(metadata={'sa': Column(String)})
     is_admin:bool = field(init=False, metadata={'sa': Column(Boolean)})
-    role: str = field(init=False, metadata={'sa': Column(String)})
+    # AUTH-11：polymorphic 欄補 NOT NULL（與 finfun-core alembic migration 同批）；
+    # polymorphic_on 由 SQLAlchemy 恆填充 'user'，存量已查核 NULL=0（PLAN 附錄 D4）
+    role: str = field(init=False, metadata={'sa': Column(String, nullable=False)})
     # role: RoleEnum = field(init=False, metadata={'sa': Column(SQLEnum(RoleEnum))})  # Use the Enum for the role column
 
     __mapper_args__ = {

@@ -1,6 +1,7 @@
 
 import copy
 import time
+from urllib.parse import urlparse
 
 from authlib.integrations.flask_client import OAuth
 from flask import (flash, jsonify, redirect, render_template, request,
@@ -17,6 +18,19 @@ from funlab.flaskr.app import FunlabFlask
 from .forms import AddUserForm, LoginForm, ResetPassForm
 from .user import (LOGIN_EXTERNAL_ACCOUNT, LOGIN_INACTIVE, LOGIN_OK,
                    OAuthUser, UserEntity, entities_registry)
+
+
+def _safe_next(raw: str | None, default_endpoint: str = 'root_bp.home') -> str:
+    """AUTH-09：只接受本站相對路徑；絕對 URL／協議相對 URL／非 '/' 開頭一律回預設。
+
+    紅線（PLAN (g)）：禁止簡化成只查 startswith('/')——'//evil.com' 協議相對
+    形式必須一併擋掉。
+    """
+    if raw:
+        p = urlparse(raw)
+        if not p.scheme and not p.netloc and raw.startswith('/') and not raw.startswith('//'):
+            return raw
+    return url_for(default_endpoint)
 
 
 class AuthView(Plugin):
@@ -205,22 +219,25 @@ class AuthView(Plugin):
                 # checkbox 未勾選時瀏覽器不送此欄位，須用 .get
                 rememberme = request.form.get('rememberme') == 'y'
                 # Locate user
-                with self.app.dbmgr.session_context() as session:
-                    user = load_user(email, session)
-                    if not user:
-                        flash('User email not exist. Please check.', "warning")
+                # 注意：DB session 改名 sa_session，避免遮蔽 Flask session
+                # （AUTH-08 的 session.clear() 必須作用於 Flask 簽名 cookie session）
+                with self.app.dbmgr.session_context() as sa_session:
+                    user = load_user(email, sa_session)
+                    result = None if user is None else user.check_password_login(password)
+                    if result == LOGIN_OK:
+                        user.user_folder = self.app.get_user_data_storage_path(user.username)
+                        session.clear()   # AUTH-08 登入手勢：丟棄匿名期 session，防固定/殘留
+                        login_user(user, remember=rememberme)
+                        # AUTH-09：next 僅跟本站相對路徑（經 _safe_next 白名單）
+                        return redirect(_safe_next(request.args.get('next') or request.form.get('next')))
+                    elif result == LOGIN_EXTERNAL_ACCOUNT:
+                        # AUTH-06：OAuth 帳號非機密（頁面本就列出 provider），保留引導訊息
+                        flash('Your account is from external authentication provider, please login with proper provider below.', "info")
+                    elif result == LOGIN_INACTIVE:
+                        flash("Account is not active. Please contact administrator.", "warning")
                     else:
-                        result = user.check_password_login(password)
-                        if result == LOGIN_OK:
-                            user.user_folder = self.app.get_user_data_storage_path(user.username)
-                            login_user(user, remember=rememberme)
-                            return redirect(url_for('root_bp.home'))
-                        elif result == LOGIN_EXTERNAL_ACCOUNT:
-                            flash('Your account is from external authentication provider, please login with proper provider below.', "info")
-                        elif result == LOGIN_INACTIVE:
-                            flash("Account is not active. Please contact administrator.", "warning")
-                        else:
-                            flash("Incorrect password. Please try again.", "warning")
+                        # AUTH-06：不存在與錯密碼共用同一訊息，杜絕列舉
+                        flash("Invalid email or password. Please try again.", "warning")
                 return render_template('/sign-in.html', form=login_form, oauths_info=self.oauths_info)
             elif current_user and current_user.is_authenticated:
                 return redirect(url_for('root_bp.home'))
@@ -255,8 +272,9 @@ class AuthView(Plugin):
                     flash(f'{msg}', category='danger')
                     return render_template('sign-in.html', form=LoginForm(), oauths_info=self.oauths_info)
             except Exception as e:
+                # AUTH-14：例外細節只進 log，不回餽瀏覽器（探測面紅線）
                 self.mylogger.exception("authorize_access_token exception")
-                flash(f'Exception:{str(e)}', category='danger')
+                flash('OAuth sign-in failed. Please try again.', category='danger')
                 return render_template('sign-in.html', form=LoginForm(), oauths_info=self.oauths_info)
             try:
                 self.oauth_name_inuse = oauth_name
@@ -276,12 +294,23 @@ class AuthView(Plugin):
                         save_user(oauth_user.to_userentity(), sa_session)
                         user=load_user(oauth_user.email, sa_session)
                         user.user_folder = self.app.get_user_data_storage_path(user.username)
-                session['oauth_token'] = token
-                login_user(user)
+                # AUTH-08：清掉 _oauth_login_start 與匿名期殘留鍵。位置紅線：
+                # 必須在 authorize_access_token()（已於上方完成 authlib state 校驗）
+                # 之後、login_user() 之前——不可移到校驗之前。
+                session.clear()
+                # AUTH-14：access_token 不再明文存簽名 cookie（全 workspace
+                # grep 無消費者）；如需 API 續用應改放 app.cache（server-side）
+                session['oauth_login_at'] = int(time.time())
+                if not login_user(user):
+                    # AUTH-04(a)(5)：停用 OAuth 帳號給明確訊息而非困惑導向
+                    flash("Account is not active. Please contact administrator.", "warning")
+                    return render_template('sign-in.html', form=LoginForm(), oauths_info=self.oauths_info)
                 return redirect(url_for('root_bp.home'))
             except Exception as e:
                 self.oauth_name_inuse = None
-                flash(f'Get userinfo from OAuth provider failed. Exception:{e}', category='danger')
+                # AUTH-14：例外細節只進 log，不回餽瀏覽器
+                self.mylogger.exception("authorize userinfo/userdata exception")
+                flash('Get userinfo from OAuth provider failed. Please try again.', category='danger')
                 return render_template('sign-in.html', form=LoginForm(), oauths_info=self.oauths_info)
 
         @self.blueprint.route('/logout', methods=['GET', 'POST'])
