@@ -9,7 +9,7 @@
 防回歸斷言（修復已合併 main／本 PR）；其餘測試仍為缺陷重現，待對應修復合併後反轉。
 
 執行（需要 finfun 環境；tmp sqlite，不觸網、不碰正式庫）：
-    cd funlab-auth && source ~/.venv/fund13/bin/activate
+    cd funlab-auth && source ~/workspaces/fund13/.venv/bin/activate
     python -m pytest -q <本檔路徑>
 注意：本檔建 2 個完整 FunlabFlask，跑一次約 60–120 秒。
 """

@@ -5,7 +5,7 @@
 反轉為防回歸斷言（文件各項已給出反轉後的版本）。
 
 執行（需要 finfun 環境；tmp sqlite，不觸網、不碰正式庫）：
-    cd funlab-auth && source ~/.venv/fund13/bin/activate
+    cd funlab-auth && source ~/workspaces/fund13/.venv/bin/activate
     python -m pytest -q <本檔路徑>
 注意：本檔建 2 個完整 FunlabFlask，跑一次約 60–120 秒。
 """

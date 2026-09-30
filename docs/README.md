@@ -11,6 +11,6 @@
 
 ## 快速狀態
 
-- 測試基線：`cd funlab-auth && source ~/.venv/fund13/bin/activate && python -m pytest -q` → 19 passed。
+- 測試基線：`cd funlab-auth && source ~/workspaces/fund13/.venv/bin/activate && python -m pytest -q` → 19 passed。
 - 已修復（working tree，未 commit）：H2 /login 驗證密碼＋rememberme、H3 /resetpass 僅限本人＋拒 OAuth＋成功即登出。
 - 待修（依優先級）：**P0** AUTH-01（刪帳號舊 cookie→全站 500）、AUTH-03（[AuthView] 標量鍵→整站 fail-open 降 PUBLIC）；**P1** AUTH-02（開放註冊）、AUTH-04（request_loader Bearer 分支 500）、AUTH-05（無登入限流）、AUTH-07（GET logout）、AUTH-10（load_user 裸 except）；**P2** AUTH-06/08/09/11/12/13/14。

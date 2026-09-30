@@ -8,7 +8,7 @@
 
 ## 0. 環境與測試基礎（所有條目共用）
 
-- 執行環境：`cd funlab-auth && source ~/.venv/fund13/bin/activate`（套件由 venv editable 安裝，`funlab.auth` 可直接 import；完整 app 測試需在任一目錄執行均可，但入口探針慣例在 `finfun/` 下跑）。
+- 執行環境：`cd funlab-auth && source ~/workspaces/fund13/.venv/bin/activate`（套件由 venv editable 安裝，`funlab.auth` 可直接 import；完整 app 測試需在任一目錄執行均可，但入口探針慣例在 `finfun/` 下跑）。
 - 現有測試基線：`python -m pytest -q` → **19 passed**（任何修改後必須 ≥19 且零失敗）。
 - 整合測試需要完整 `FunlabFlask`（tmp sqlite）。兩個關鍵前提：
   1. **JSONB→sqlite shim**：finfun 實體使用 PostgreSQL `JSONB`，建表前必須註冊 `@compiles(JSONB, "sqlite")`，否則 `create_all` 爆錯。
