@@ -1,7 +1,7 @@
 # funlab-auth 使用與架構指南（AUTH_GUIDE）
 
 > 2026-09-27，fund13-dev-arch。描述**現況**（working tree 含 /login 密碼驗證與 /resetpass 加權）。
-> 引用格式 `相對路徑:符號名`（約 Lxx）。缺陷與改進見 `IMPROVEMENT_PLAN.md`；本檔只描述現行行為。
+> 引用格式 `相對路徑:符號名`（約 Lxx）。缺陷與改進見 KB `specs/migrations/funlab-auth-IMPROVEMENT_PLAN.md`；本檔只描述現行行為。
 
 ## 1. 這是何物
 
@@ -105,4 +105,4 @@ unauthorized 行為（`register_login_handler.unauthorized_handler`）：JSON/AP
 ## 8. 測試
 
 - 單元（不需完整 app）：`tests/conftest.py` stub `funlab.core._entity_registry` 與 sys.path；`tests/unit/test_auth_user.py`（hash/verify/OAuthUser/properties）、`tests/unit/test_login_check.py`（check_password_login 四態）。基線 `python -m pytest -q`＝**19 passed**。
-- 整合（tmp sqlite FunlabFlask）：見 `docs/IMPROVEMENT_PLAN.md` §0 fixture 與 `docs/snippets/`（防回歸 15 passed／缺陷重現 14 passed）。
+- 整合（tmp sqlite FunlabFlask）：見 KB `specs/migrations/funlab-auth-IMPROVEMENT_PLAN.md` §0 fixture；缺陷重現測試現存 `tests/integration/`（snippets 已收編，原稿存 KB `temporary/funlab-auth/docs/`）。

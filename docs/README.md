@@ -5,7 +5,7 @@
 | 檔案 | 內容 | 讀者 |
 |---|---|---|
 | [AUTH_GUIDE.md](AUTH_GUIDE.md) | 現行架構與使用說明：AuthView 如何被 plugin manager 視為 security provider、LoginManager 接線、UserEntity single-table inheritance 與 `load_user(classes=...)`、OAuth 設定鍵語意、全路由表、`check_password_login` 回傳語意、user_folder 規則、session/cookie 鍵、部署須知 | 想理解/使用本 plugin 的人 |
-| [IMPROVEMENT_PLAN.md](IMPROVEMENT_PLAN.md) | 改善方案 AUTH-01…AUTH-14：每項含問題與影響、優先級、目標檔/函式、完整修正程式碼、完整 pytest、驗證指令、風險與禁止事項；附實施順序與 PR 切分、實證輸出摘要、無法核實事項 | fund13-dev-coder（實作者） |
+| KB `specs/migrations/funlab-auth-IMPROVEMENT_PLAN.md`（2026-10-10 遷 KB） | 改善方案 AUTH-01…AUTH-14：每項含問題與影響、優先級、目標檔/函式、完整修正程式碼、完整 pytest、驗證指令、風險與禁止事項；附實施順序與 PR 切分、實證輸出摘要、無法核實事項 | fund13-dev-coder（實作者） |
 | [snippets/test_auth_routes.py](snippets/test_auth_routes.py) | 已修復項（H2 /login 密碼驗證、H3 /resetpass 加權）之防回歸整合測試；目標位置 `tests/integration/test_auth_routes.py`；實跑 **15 passed** | coder |
 | [snippets/test_auth_defects.py](snippets/test_auth_defects.py) | 未修缺陷之重現測試（斷言現行錯誤行為）；修復對應 AUTH-## 後該項測試轉 FAIL 屬預期，按各項 (e) 反轉後併入防回歸集；實跑 **14 passed** | coder |
 
