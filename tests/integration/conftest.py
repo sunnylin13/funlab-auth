@@ -1,4 +1,4 @@
-"""funlab-auth 整合測試共用 fixture（IMPROVEMENT_PLAN §0）。
+"""funlab-auth 整合測試共用 fixture（KB specs/migrations/funlab-auth-IMPROVEMENT_PLAN.md §0）。
 
 tmp sqlite + test_client；不觸網、不碰正式庫。
 兩個關鍵前提：

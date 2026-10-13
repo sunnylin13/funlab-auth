@@ -1,6 +1,6 @@
 """AUTH-03 防回歸：[AuthView] 內標量設定鍵不得令 AuthView 初始化炸毀（整站 fail-open PUBLIC）。
 
-規格：docs/IMPROVEMENT_PLAN.md §AUTH-03 (e)。
+規格：KB specs/migrations/funlab-auth-IMPROVEMENT_PLAN.md §AUTH-03 (e)。
 自建兩個完整 FunlabFlask（tmp sqlite），跑一次約 60–120 秒；不觸網、不碰正式庫。
 """
 import os
